@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "229209086436",
+    "project_id": "magicalvibe-e3e86",
+    "storage_bucket": "magicalvibe-e3e86.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:229209086436:android:5176b148d22482b5f8cff1",
+        "android_client_info": {
+          "package_name": "com.example.magical_vibe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "229209086436-ofrue418aj0tovupivr341uu7v8sbevt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.magical_vibe",
+            "certificate_hash": "b7edbd39066248fab34c6dc2a5c104e82dc240df"
+          }
+        },
+        {
+          "client_id": "229209086436-5knlsj97hrshrhumhggihvjp3gn640p8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLOHzPHfYOnodhlmuLQv17YF905KXrojg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "229209086436-5knlsj97hrshrhumhggihvjp3gn640p8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
