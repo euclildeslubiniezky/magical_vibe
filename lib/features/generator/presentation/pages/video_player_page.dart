@@ -1,5 +1,8 @@
+import 'dart:html' as html;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final String videoUrl;
@@ -11,17 +14,51 @@ class VideoPlayerPage extends StatefulWidget {
 }
 
 class _VideoPlayerPageState extends State<VideoPlayerPage> {
-  late VideoPlayerController _controller;
+  late VideoPlayerController _videoPlayerController;
+  ChewieController? _chewieController;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.play();
-        _controller.setLooping(true);
-      });
+    _initializePlayer();
+  }
+
+  Future<void> _initializePlayer() async {
+    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    await _videoPlayerController.initialize();
+
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController,
+      autoPlay: true,
+      looping: true,
+      showControls: true,
+      aspectRatio: _videoPlayerController.value.aspectRatio,
+      errorBuilder: (context, errorMessage) {
+        return Center(
+          child: Text(
+            errorMessage,
+            style: const TextStyle(color: Colors.white),
+          ),
+        );
+      },
+    );
+    setState(() {});
+  }
+
+  void _downloadVideo() {
+    if (kIsWeb) {
+      final anchor = html.AnchorElement(href: widget.videoUrl)
+        ..target = 'blank'
+        ..download = 'magical_vibe_video.mp4';
+      html.document.body!.append(anchor);
+      anchor.click();
+      anchor.remove();
+    } else {
+      // Mobile implementation for future
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Download not implemented for mobile yet')),
+      );
+    }
   }
 
   @override
@@ -31,11 +68,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       body: Stack(
         children: [
           Center(
-            child: _controller.value.isInitialized
-                ? AspectRatio(
-                    aspectRatio: _controller.value.aspectRatio,
-                    child: VideoPlayer(_controller),
-                  )
+            child: _chewieController != null &&
+                    _chewieController!.videoPlayerController.value.isInitialized
+                ? Chewie(controller: _chewieController!)
                 : const CircularProgressIndicator(),
           ),
           Positioned(
@@ -46,26 +81,24 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
+          Positioned(
+            bottom: 40,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: _downloadVideo,
+              backgroundColor: Colors.pinkAccent,
+              child: const Icon(Icons.download, color: Colors.white),
+            ),
+          ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            _controller.value.isPlaying
-                ? _controller.pause()
-                : _controller.play();
-          });
-        },
-        child: Icon(
-          _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-        ),
       ),
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _videoPlayerController.dispose();
+    _chewieController?.dispose();
     super.dispose();
   }
 }
