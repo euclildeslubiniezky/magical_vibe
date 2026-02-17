@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:async';
+import 'dart:html' as html; // For Web Download
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,6 +12,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// GeneratedVideoPlayer with Custom Controls & Web Download
 class GeneratedVideoPlayer extends StatefulWidget {
   final String videoUrl;
 
@@ -27,13 +29,12 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
   @override
   void initState() {
     super.initState();
-
-    _controller = VideoPlayerController.network(widget.videoUrl)
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
       ..initialize().then((_) {
         setState(() {
           _isInitialized = true;
         });
-        _controller.setVolume(0);
+        _controller.setLooping(true); // Default looping
         _controller.play();
       });
   }
@@ -44,15 +45,76 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
     super.dispose();
   }
 
+  void _downloadVideo() {
+    // Web download logic: Open in new tab to avoid navigation issues
+    // target="_blank" ensures the current page state is preserved
+    final anchor = html.AnchorElement(href: widget.videoUrl)
+      ..target = 'blank'
+      ..click();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Colors.indigoAccent));
     }
 
-    return AspectRatio(
-      aspectRatio: _controller.value.aspectRatio,
-      child: VideoPlayer(_controller),
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+        // 1. Video Layer
+        Center(
+          child: AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          ),
+        ),
+
+        // 2. Custom Controls Layer (Always Visible)
+        Container(
+          height: 60,
+          color: Colors.black.withOpacity(0.6), // Semi-transparent black background
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            children: [
+              // Play/Pause Button
+              IconButton(
+                icon: Icon(
+                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _controller.value.isPlaying
+                        ? _controller.pause()
+                        : _controller.play();
+                  });
+                },
+              ),
+              
+              // Progress Bar
+              Expanded(
+                child: VideoProgressIndicator(
+                  _controller,
+                  allowScrubbing: true,
+                  colors: const VideoProgressColors(
+                    playedColor: Colors.indigoAccent,
+                    bufferedColor: Colors.white24,
+                    backgroundColor: Colors.grey,
+                  ),
+                ),
+              ),
+              
+              // Download Button
+              IconButton(
+                icon: const Icon(Icons.download, color: Colors.white),
+                onPressed: _downloadVideo,
+                tooltip: '保存する',
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -116,7 +178,10 @@ class _HomeScreenState extends State<HomeScreen> {
               timeout: const Duration(minutes: 10),
             ),
           )
-          .call({'attribute': _selectedAttribute});
+          .call({
+            'attribute': _selectedAttribute,
+            'duration': 5, // Fixed duration: 5 seconds
+          });
 
       final url = result.data['videoUrl'];
 

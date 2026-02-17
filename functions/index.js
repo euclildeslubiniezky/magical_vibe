@@ -14,7 +14,7 @@ exports.generateTransformationVideo = onCall({
   secrets: [falApiKey],
 }, async (request) => {
 
-  const { attribute } = request.data;
+  const { attribute, duration = 5 } = request.data;
 
   console.log(`--- 召喚儀式開始: 属性 [${attribute}] ---`);
 
@@ -57,7 +57,7 @@ exports.generateTransformationVideo = onCall({
       image_url: imageUrl,
       prompt: "The video starts with a massive explosion of " + attribute + " energy. A cinematic wide shot reveals the full body of a youthful spirit girl as her dress materializes. High quality transformation, ethereal atmosphere.",
       negative_prompt: "adult woman, sexy, mature face, close up, macro shot, only hands, cropped face, deformed hands, extra fingers, blurry body",
-      duration: "10", // 10秒のフル動画
+      duration: duration,
       mode: "high_quality" // 最高画質モード
     }, {
       headers: { 'Authorization': `Key ${apiKey}`, 'Content-Type': 'application/json' },
