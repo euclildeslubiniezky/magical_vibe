@@ -6,7 +6,9 @@ import 'dart:async';
 import 'dart:html' as html; // For Web Download
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String? initialAttribute;
+
+  const HomeScreen({super.key, this.initialAttribute});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
