@@ -19,22 +19,22 @@ exports.generateTransformationVideo = onCall({
   console.log(`--- 召喚儀式開始: 属性 [${attribute}] ---`);
 
   // 【最高画質・魔法少女の統一感プロンプト】
-  const baseQuality = "Cinematic full body shot of a young magical girl, youthful face, balanced stance, masterpiece, 8k, ";
+  const baseQuality = "cinematic full body shot of a young magical girl, youthful face, elegant standing pose, closed legs, legs together, balanced stance, masterpiece, 8k, ";
   const handStable = "hands clearly visible, five clearly separated fingers, correct finger anatomy, natural relaxed hand pose, no extra fingers, no fused fingers, ";
-  const dressStable = "Transforming from see through lingerie to a luxurious dress while glowing, elegant posture, smooth silk texture, symmetrical design, structured bodice, layered skirt, controlled fabric physics, no distortion, full body visible, entire character visible, no cropping, ";
-  const hairOptions = ["long blonde hair", "bright brown hair", "silver hair", "black hair", "pastel pink hair", "light blue hair"];
-  const dressOptions = ["flowing magical dress", "elegant layered dress", "short frilled magical outfit", "butterfly themed dress", "celestial star themed dress", "crystal ornament dress"];
+  const dressStable = "magical girl outfit formed from light energy, elegant silhouette, symmetrical design, smooth fabric, full body visible, ";
+  const hairOptions = ["long blonde hair", "long bright brown hair", "long silver hair", "long black hair", "long pastel pink hair", "long light blue hair"];
+  const dressOptions = ["long flowing magical dress", "long elegant layered dress", "long frilled magical outfit", "long butterfly themed dress", "long celestial star themed dress", "long crystal ornament dress"];
   const randomDress = dressOptions[Math.floor(Math.random() * dressOptions.length)];
   const randomHair = hairOptions[Math.floor(Math.random() * hairOptions.length)];
 
   const prompts = {
-    'Fire': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",flaming phoenix wings, magical staff, burning embers, many fire particles, red light behind her, full body visible, entire character visible, no cropping",
-    'Water': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",fluid ribbon wings, magical staff, rippling water reflections, many floating water balls, many water particles, blue light behind her, ocean, in the water, full body visible, entire character visible, no cropping",
-    'Thunder': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",lightning-bolt wings, magical staff, many vertical lightning-bolt strikes from heaven, lightning-bolt particles, lightning-bolt behind her, full body visible, entire character visible, no cropping",
-    'Ice': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",sharp crystal wings, magical staff,hard reflective ice surfaces, many snow particles, cold blue lighting, solid geometric structure, frozen crystal particles, blue light behind her, full body visible, entire character visible, no cropping",
-    'Wind': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",floating feather wings, magical staff, floating ribbons, many emerald particles, green light behind her, full body visible, entire character visible, no cropping",
-    'Light': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",radiant angel wings, magical staff white fractals, many light particles, white light behind her, full body visible, entire character visible, no cropping",
-    'Dark': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",shadow bat wings, magical staff, purple mysterious shadow energy, devil horns from the head, many purple dark magic lightning particles, full body visible, entire character visible, no cropping",
+    'Fire': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",flaming phoenix big wings, magical staff, spreading blazing flames, many floating fire balls around her, in the great volcano, ",
+    'Water': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",fluid ribbon big wings, magical staff, rippling water reflections, many floating water balls around her, in the shining ocean, ",
+    'Thunder': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",lightning-bolt big wings, magical staff, spreading lightning-bolt, many vertical lightning-bolt strikes from heaven around her, in the lightning-bolt, ",
+    'Ice': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",sharp crystal big wings, magical staff, spreading reflect ice crystals, many ice crystals around her, in the snow, ",
+    'Wind': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",floating feather big wings, magical staff, spreading many flowers bloom, many flowers bloom around her, in the shining forest, ",
+    'Light': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",radiant angel big wings, magical staff, spreading divine light, many fractal balls around her, in the heavenly sky, ",
+    'Dark': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",shadow bat big wings, magical staff, spreading purple lightning-bolt, devil horns from the head, many purple lightning-bolt around her, in the castlevania, ",
   };
 
   const prompt = prompts[attribute] || prompts['Fire'];
@@ -61,13 +61,13 @@ exports.generateTransformationVideo = onCall({
 
     // Attribute-specific Staff Prompts
     const staffPrompts = {
-      'Fire': "flaming phoenix staff",
-      'Water': "crystal trident staff",
-      'Thunder': "lightning spear staff",
-      'Ice': "crystal ice staff",
-      'Wind': "emerald wind staff",
-      'Light': "radiant golden staff",
-      'Dark': "shadow magic staff",
+      'Fire': "flaming phoenix long staff",
+      'Water': "crystal trident long staff",
+      'Thunder': "lightning spear long staff",
+      'Ice': "crystal ice long staff",
+      'Wind': "emerald flower long staff",
+      'Light': "radiant golden long staff",
+      'Dark': "purple lightning-bolt long staff",
     };
     const staffName = staffPrompts[attribute] || "magical staff";
 
@@ -77,7 +77,7 @@ exports.generateTransformationVideo = onCall({
     const videoResponse = await axios.post('https://fal.run/fal-ai/kling-video/v1.5/pro/image-to-video', {
       image_url: imageUrl,
       prompt: videoPrompt,
-      negative_prompt: "adult woman, sexy, mature face, close up, macro shot, only hands, cropped face, cropped body, extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, broken arms, extra limbs, blurry hands, malformed body, broken fingers, malformed hands, blurry hands, cropped hands, distorted fingers",
+      negative_prompt: "adult woman, mature face, close up, macro shot, only hands, cropped face, cropped body, extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, broken arms, extra limbs, blurry hands, malformed body, broken fingers, malformed hands, blurry hands, cropped hands, distorted fingers",
       duration: duration,
       mode: "high_quality" // 最高画質モード
     }, {
