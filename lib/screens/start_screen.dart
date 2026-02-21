@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'home_screen.dart';
+import '../theme/app_shadows.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
@@ -140,7 +141,7 @@ class _StartScreenState extends State<StartScreen>
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Column(
-                    children: const [
+                    children: [
                        Text(
                         "精霊召喚の世界へようこそ",
                         style: TextStyle(
@@ -159,9 +160,7 @@ class _StartScreenState extends State<StartScreen>
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           letterSpacing: 1.5,
-                          shadows: [
-                            Shadow(color: Colors.white54, blurRadius: 10),
-                          ],
+                          shadows: AppShadows.whiteSoft,
                         ),
                       ),
                     ],
@@ -239,14 +238,14 @@ class _StartButtonState extends State<_StartButton> {
               ),
               boxShadow: _isHovered
                   ? [
-                      BoxShadow(
+                      SafeBoxShadow.build(
                         color: Colors.white.withOpacity(0.5),
                         blurRadius: 30,
                         spreadRadius: 5,
                       )
                     ]
                   : [
-                      BoxShadow(
+                      SafeBoxShadow.build(
                         color: Colors.white.withOpacity(0.1),
                         blurRadius: 10,
                         spreadRadius: 1,

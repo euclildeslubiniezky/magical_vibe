@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 import 'dart:html' as html; // For Web Download
 import 'dart:math' as math;
+import '../theme/app_shadows.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? initialAttribute;
@@ -337,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       "最高画質で精霊を召喚中...\n3分ほどかかる場合があります。",
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -345,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        shadows: [Shadow(color: Colors.purpleAccent, blurRadius: 10)],
+                        shadows: AppShadows.purpleGlow,
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -382,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Choose Your Element",
                       style: TextStyle(
                         fontFamily: 'Cinzel', 
@@ -390,9 +391,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         letterSpacing: 1.5,
-                        shadows: [
-                          Shadow(color: Colors.white54, blurRadius: 10),
-                        ],
+                        shadows: AppShadows.whiteSoft,
                       ),
                     ),
 
@@ -498,7 +497,7 @@ class _ElementButton extends StatelessWidget {
           ),
           boxShadow: isSelected
               ? [
-                  BoxShadow(
+                  SafeBoxShadow.build(
                     color: color.withOpacity(0.6),
                     blurRadius: 20,
                     spreadRadius: 2,
@@ -516,7 +515,7 @@ class _ElementButton extends StatelessWidget {
                  color: color,
                  shape: BoxShape.circle,
                  boxShadow: [
-                   BoxShadow(color: color, blurRadius: 10, spreadRadius: 2),
+                    SafeBoxShadow.build(color: color, blurRadius: 10, spreadRadius: 2),
                  ],
                ),
             ),
@@ -566,7 +565,7 @@ class _SummonButton extends StatelessWidget {
                   ),
             boxShadow: isEnabled
                 ? [
-                    BoxShadow(
+                    SafeBoxShadow.build(
                       color: const Color(0xFF7B1FA2).withOpacity(0.5),
                       blurRadius: 15,
                       offset: const Offset(0, 4),
@@ -579,14 +578,14 @@ class _SummonButton extends StatelessWidget {
             ),
           ),
           alignment: Alignment.center,
-          child: const Text(
+          child: Text(
             "精霊を召喚する",
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
-              shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+              shadows: AppShadows.blackSoft,
             ),
           ),
         ),

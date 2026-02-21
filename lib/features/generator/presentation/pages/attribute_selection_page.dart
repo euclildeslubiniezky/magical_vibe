@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:magical_vibe/core/app_theme.dart';
+import 'package:magical_vibe/theme/app_shadows.dart';
 import '../../data/generator_controller.dart';
 import 'video_player_page.dart';
 import '../../../monetization/presentation/widgets/paywall_dialog.dart';
@@ -127,7 +128,7 @@ class _AttributeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withOpacity(0.5), width: 1.5),
           boxShadow: [
-            BoxShadow(
+            SafeBoxShadow.build(
               color: color.withOpacity(0.2),
               blurRadius: 15,
               spreadRadius: 2,
