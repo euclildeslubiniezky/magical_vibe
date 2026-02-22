@@ -29,8 +29,8 @@ exports.generateTransformationVideo = onCall({
 
   const prompts = {
     'Fire': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",flaming phoenix big wings, magical staff, spreading blazing flames, many floating fire balls around her, in the great volcano, ",
-    'Water': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",fluid ribbon big wings, magical staff, rippling water reflections, many floating water balls around her, in the shining ocean, ",
-    'Thunder': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",lightning-bolt big wings, magical staff, spreading lightning-bolt, many vertical lightning-bolt strikes from heaven around her, in the lightning-bolt, ",
+    'Water': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",fluid ribbon big wings, magical staff, spreading blue water reflections, many floating blue water balls around her, in the shining ocean, ",
+    'Thunder': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",lightning-bolt big wings, magical staff, spreading lightning-bolt, many vertical lightning-bolt strikes from heaven around her, in the dark rainy sky, ",
     'Ice': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",sharp crystal big wings, magical staff, spreading reflect ice crystals, many ice crystals around her, in the snow, ",
     'Wind': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",floating feather big wings, magical staff, spreading many flowers bloom, many flowers bloom around her, in the shining forest, ",
     'Light': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",radiant angel big wings, magical staff, spreading divine light, many fractal balls around her, in the heavenly sky, ",
@@ -61,23 +61,24 @@ exports.generateTransformationVideo = onCall({
 
     // Attribute-specific Staff Prompts
     const staffPrompts = {
-      'Fire': "flaming phoenix long staff",
-      'Water': "crystal trident long staff",
-      'Thunder': "lightning spear long staff",
-      'Ice': "crystal ice long staff",
-      'Wind': "emerald flower long staff",
-      'Light': "radiant golden long staff",
-      'Dark': "purple lightning-bolt long staff",
+      'Fire': "flaming phoenix sword",
+      'Water': "radiant crystal trident",
+      'Thunder': "radiant lightning spear",
+      'Ice': "radiant crystal ice staff",
+      'Wind': "radiant emerald staff",
+      'Light': "radiant golden staff",
+      'Dark': "radiant purple trident",
     };
     const staffName = staffPrompts[attribute] || "magical staff";
 
     // Dynamic Cinematic Transformation Prompt
-    const videoPrompt = `The video begins with a close-up of the young magical girl's determined face. Suddenly, powerful ${attribute} energy erupts around her. The camera rapidly zooms out to reveal her full body as her magical outfit forms in radiant light. She holds her ${staffName} confidently in one hand. Dynamic cinematic lighting, dramatic many particles. Perfect hands, five fingers visible, stable anatomy. 5 second powerful transformation sequence.`;
+    const videoPrompt = `The video begins with a close-up of the young magical girl's filled with determination. Suddenly, powerful ${attribute} energy erupts around her. The drone camera high-speed zooms out to reveal her full body as her magical costume and wings forms in radiant light. In that instant, the magical costume and wings take shape within a shimmering light. 
+                         In that instant, the magical costume takes shape within a shimmering light. Wings spreading as they radiate energy. She holds her ${staffName} confidently in one hand. Dynamic cinematic lighting, dramatic many particles. Perfect hands, five fingers visible, stable anatomy. 5 second powerful transformation sequence.`;
 
     const videoResponse = await axios.post('https://fal.run/fal-ai/kling-video/v1.5/pro/image-to-video', {
       image_url: imageUrl,
       prompt: videoPrompt,
-      negative_prompt: "adult woman, mature face, close up, macro shot, only hands, cropped face, cropped body, extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, broken arms, extra limbs, blurry hands, malformed body, broken fingers, malformed hands, blurry hands, cropped hands, distorted fingers",
+      negative_prompt: "adult woman, mature face, macro shot, only hands, cropped body, extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, broken arms, extra limbs, blurry hands, malformed body, broken fingers, malformed hands, blurry hands, cropped hands, distorted fingers, disappearing wings, hidden wings, disappearing energy, ",
       duration: duration,
       mode: "high_quality" // 最高画質モード
     }, {

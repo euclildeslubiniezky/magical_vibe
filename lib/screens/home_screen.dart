@@ -447,15 +447,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
 
-          // シェアボタン
+          // 保存ボタン
           if (_mediaUrl != null && !_isLoading)
             Positioned(
               top: 50,
               right: 20,
               child: FloatingActionButton.small(
-                onPressed: () =>
-                    Share.share("精霊を召喚しました！ $_mediaUrl"),
-                child: const Icon(Icons.share),
+                onPressed: () {
+                  if (_mediaUrl != null) {
+                    html.window.open(_mediaUrl!, '_blank');
+                    }
+                  },
+                child: const Icon(Icons.download),
               ),
             ),
         ],
