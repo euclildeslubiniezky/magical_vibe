@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =============================
+    // users コレクション
+    // =============================
+    match /users/{userId} {
+
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      allow update: if false;   // クレジットはFunctionsのみ変更可
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    // =============================
+    // videoJobs
+    // =============================
+    match /videoJobs/{jobId} {
+
+      allow read: if request.auth != null
+                  && request.auth.uid == resource.data.uid;
+
+      allow create: if false;  // Functionsのみ作成
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

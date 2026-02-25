@@ -51,7 +51,6 @@ dependencies:
   http: ^1.2.1
   path_provider: ^2.1.2
   firebase_app_check: ^0.4.1+4
-  google_sign_in: ^7.2.0
   chewie: ^1.13.0
 
 dev_dependencies:

@@ -18,7 +18,7 @@ Future<void> main() async {
   try {
     await FirebaseAppCheck.instance.activate(
       // Web Provider with reCAPTCHA v3
-      webProvider: ReCaptchaV3Provider('6Lch8GssAAAAAEu18BPi0tVW_iXtKA3_3Lu23Dm_'),
+      webProvider: ReCaptchaV3Provider('6Lch8GssAAAAAEu18BPi0tVW_iXtKA3_3Lu23Dm_'), // TODO: Set real site key
       // Default providers for Android/iOS
       androidProvider: AndroidProvider.debug,
       appleProvider: AppleProvider.appAttest,
@@ -27,21 +27,6 @@ Future<void> main() async {
     debugPrint('Firebase App Check activation failed: $e');
   }
 
-  // Authentication Logic
-  if (kIsWeb) {
-    // On Web, persistence is managed by browser. 
-    // If not signed in, we can stay anonymous or try silent Google.
-    // Since UI change is prohibited, we default to Anonymous for now to ensure app works.
-    // Google Sign-In capability is added to Repository for future UI.
-    if (FirebaseAuth.instance.currentUser == null) {
-       await FirebaseAuth.instance.signInAnonymously();
-    }
-  } else {
-    // Mobile: Anonymous Default
-     if (FirebaseAuth.instance.currentUser == null) {
-      await FirebaseAuth.instance.signInAnonymously();
-    }
-  }
 
   runApp(const MagicalVibeApp());
 }

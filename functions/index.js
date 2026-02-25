@@ -1,96 +1,120 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require('firebase-functions/params');
-const { initializeApp } = require("firebase-admin/app");
-const axios = require("axios");
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const fetch = require("node-fetch");
 
-initializeApp();
+admin.initializeApp();
+const db = admin.firestore();
 
-// 【重要】衝突を避けるための新しい名前
-const falApiKey = defineSecret('FAL_SECRET_KEY');
+const FAL_KEY = process.env.FAL_KEY;
 
-exports.generateTransformationVideo = onCall({
-  timeoutSeconds: 540,
-  memory: "1GiB",
-  secrets: [falApiKey],
-}, async (request) => {
+// ===============================
+// 生成開始（Flutterから呼ばれる）
+// ===============================
+exports.generateVideo = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Login required");
+  }
 
-  const { attribute, duration = 5 } = request.data;
+  const uid = context.auth.uid;
+  const prompt = data.prompt;
 
-  console.log(`--- 召喚儀式開始: 属性 [${attribute}] ---`);
+  if (!prompt) {
+    throw new functions.https.HttpsError("invalid-argument", "Prompt missing");
+  }
 
-  // 【最高画質・魔法少女の統一感プロンプト】
-  const baseQuality = "cinematic full body shot of a young magical girl, youthful face, elegant standing pose, closed legs, legs together, balanced stance, masterpiece, 8k, ";
-  const handStable = "hands clearly visible, five clearly separated fingers, correct finger anatomy, natural relaxed hand pose, no extra fingers, no fused fingers, ";
-  const dressStable = "magical girl outfit formed from light energy, elegant silhouette, symmetrical design, smooth fabric, full body visible, ";
-  const hairOptions = ["long blonde hair", "long bright brown hair", "long silver hair", "long black hair", "long pastel pink hair", "long light blue hair"];
-  const dressOptions = ["long flowing magical dress", "long elegant layered dress", "long frilled magical outfit", "long butterfly themed dress", "long celestial star themed dress", "long crystal ornament dress"];
-  const randomDress = dressOptions[Math.floor(Math.random() * dressOptions.length)];
-  const randomHair = hairOptions[Math.floor(Math.random() * hairOptions.length)];
+  const userRef = db.collection("users").doc(uid);
 
-  const prompts = {
-    'Fire': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",flaming phoenix big wings, magical staff, spreading blazing flames, many floating fire balls around her, in the great volcano, ",
-    'Water': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",fluid ribbon big wings, magical staff, spreading blue water reflections, many floating blue water balls around her, in the shining ocean, ",
-    'Thunder': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",lightning-bolt big wings, magical staff, spreading lightning-bolt, many vertical lightning-bolt strikes from heaven around her, in the dark rainy sky, ",
-    'Ice': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",sharp crystal big wings, magical staff, spreading reflect ice crystals, many ice crystals around her, in the snow, ",
-    'Wind': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",floating feather big wings, magical staff, spreading many flowers bloom, many flowers bloom around her, in the shining forest, ",
-    'Light': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",radiant angel big wings, magical staff, spreading divine light, many fractal balls around her, in the heavenly sky, ",
-    'Dark': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",shadow bat big wings, magical staff, spreading purple lightning-bolt, devil horns from the head, many purple lightning-bolt around her, in the castlevania, ",
-  };
+  return await db.runTransaction(async (tx) => {
+    const userDoc = await tx.get(userRef);
 
-  const prompt = prompts[attribute] || prompts['Fire'];
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "User not found");
+    }
+
+    const credits = userDoc.data().credits || 0;
+
+    if (credits <= 0) {
+      throw new functions.https.HttpsError("failed-precondition", "No credits");
+    }
+
+    // クレジット減算
+    tx.update(userRef, {
+      credits: credits - 1,
+    });
+
+    // videoJobs作成
+    const jobRef = db.collection("videoJobs").doc();
+
+    tx.set(jobRef, {
+      uid: uid,
+      prompt: prompt,
+      status: "processing",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 非同期Fal呼び出し
+    processFal(jobRef.id, prompt);
+
+    return { jobId: jobRef.id };
+  });
+});
+
+// ===============================
+// Fal非同期処理
+// ===============================
+async function processFal(jobId, prompt) {
+  const jobRef = db.collection("videoJobs").doc(jobId);
 
   try {
-    const apiKey = falApiKey.value();
-
-    // 1. 静止画生成 (Flux Pro v1.1)
-    console.log("工程1: 最高画質の原画を錬成中...");
-    const imageResponse = await axios.post('https://fal.run/fal-ai/flux-pro/v1.1', {
-      prompt: prompt,
-      width: 1280,
-      height: 720,
-    }, {
-      headers: { 'Authorization': `Key ${apiKey}`, 'Content-Type': 'application/json' },
-      timeout: 60000
+    // Falへ送信（例：text-to-videoモデル）
+    const response = await fetch("https://fal.run/fal-ai/text-to-video", {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${FAL_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        duration: 4,
+        aspect_ratio: "16:9",
+      }),
     });
 
-    const imageUrl = imageResponse.data.images[0].url;
-    console.log("工程1完了: 原画URL取得");
+    const result = await response.json();
 
-    // 2. 動画生成 (Kling v1.5 Pro) - 最高画質設定
-    console.log("工程2: 生命を吹き込み中（Kling v1.5 Pro / High Quality）...");
+    if (!response.ok) {
+      throw new Error(result.detail || "Fal error");
+    }
 
-    // Attribute-specific Staff Prompts
-    const staffPrompts = {
-      'Fire': "flaming phoenix sword",
-      'Water': "radiant crystal trident",
-      'Thunder': "radiant lightning spear",
-      'Ice': "radiant crystal ice staff",
-      'Wind': "radiant emerald staff",
-      'Light': "radiant golden staff",
-      'Dark': "radiant purple trident",
-    };
-    const staffName = staffPrompts[attribute] || "magical staff";
+    const videoUrl = result.video?.url;
 
-    // Dynamic Cinematic Transformation Prompt
-    const videoPrompt = `The video begins with a close-up of the young magical girl's filled with determination. Suddenly, powerful ${attribute} energy erupts around her. The drone camera high-speed zooms out to reveal her full body as her magical costume and wings forms in radiant light. In that instant, the magical costume and wings take shape within a shimmering light. 
-                         In that instant, the magical costume takes shape within a shimmering light. Wings spreading as they radiate energy. She holds her ${staffName} confidently in one hand. Dynamic cinematic lighting, dramatic many particles. Perfect hands, five fingers visible, stable anatomy. 5 second powerful transformation sequence.`;
+    if (!videoUrl) {
+      throw new Error("No video returned");
+    }
 
-    const videoResponse = await axios.post('https://fal.run/fal-ai/kling-video/v1.5/pro/image-to-video', {
-      image_url: imageUrl,
-      prompt: videoPrompt,
-      negative_prompt: "adult woman, mature face, macro shot, only hands, cropped body, extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, broken arms, extra limbs, blurry hands, malformed body, broken fingers, malformed hands, blurry hands, cropped hands, distorted fingers, disappearing wings, hidden wings, disappearing energy, ",
-      duration: duration,
-      mode: "high_quality" // 最高画質モード
-    }, {
-      headers: { 'Authorization': `Key ${apiKey}`, 'Content-Type': 'application/json' },
-      timeout: 480000
+    await jobRef.update({
+      status: "completed",
+      videoUrl: videoUrl,
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-
-    console.log("工程2完了: 精霊が姿を現しました！");
-    return { success: true, videoUrl: videoResponse.data.video.url };
 
   } catch (error) {
-    console.error("【召喚失敗】:", error.response ? JSON.stringify(error.response.data) : error.message);
-    throw new HttpsError('internal', `精霊が姿を現しませんでした: ${error.message}`);
+    console.error("Fal Error:", error);
+
+    // 失敗 → ステータス更新
+    await jobRef.update({
+      status: "failed",
+      error: error.message,
+    });
+
+    // クレジット返却
+    const jobDoc = await jobRef.get();
+    const uid = jobDoc.data().uid;
+
+    const userRef = db.collection("users").doc(uid);
+
+    await userRef.update({
+      credits: admin.firestore.FieldValue.increment(1),
+    });
   }
-});
+}
