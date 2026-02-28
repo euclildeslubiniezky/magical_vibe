@@ -19,7 +19,7 @@ exports.generateTransformationVideo = onCall({
   console.log(`--- 召喚儀式開始: 属性 [${attribute}] ---`);
 
   // 【最高画質・魔法少女の統一感プロンプト】
-  const baseQuality = "cinematic full body shot of a young magical girl, bridal gown, choker, brooch, youthful face, elegant standing pose and don't move, closed legs and don't move, keep your feet together and don't move, maintain a stable posture and don't move, masterpiece, 8k, ";
+  const baseQuality = "cinematic full body shot of a young magical girl, bridal gown, choker, brooch, youthful face, elegant standing pose and don't move, closed legs and don't move, keep your feet together and don't move, maintain a stable posture and don't move, masterpiece, photorealistic 8k, ";
   const handStable = "hands clearly visible, five clearly separated fingers, correct finger anatomy, natural relaxed hand pose, no extra fingers, no fused fingers, ";
   const dressStable = "magical girl outfit formed from light energy, elegant silhouette, symmetrical design, smooth fabric, full body visible, ";
   const hairOptions = ["long blonde hair", "long bright brown hair", "long silver hair", "long black hair", "long pastel pink hair", "long light blue hair"];
@@ -29,7 +29,7 @@ exports.generateTransformationVideo = onCall({
 
   const prompts = {
     'Fire': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",flaming phoenix big wings, magical staff, spreading blazing flames, many floating fire balls around her, in the great volcano, ",
-    'Water': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",fluid ribbon big wings, magical staff, rippling water reflections, many floating water balls around her, in the shining ocean, ",
+    'Water': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",fluid ribbon big wings, magical staff, rippling water reflections, many floating water balls around her, in the shining sea, ",
     'Thunder': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",lightning-bolt big wings, magical staff, spreading lightning-bolt, many vertical lightning-bolt strikes from heaven around her, in the lightning-bolt, ",
     'Ice': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",sharp crystal big wings, magical staff, spreading reflect ice crystals, many ice crystals around her, in the snow, ",
     'Wind': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",floating feather big wings, magical staff, spreading many flowers bloom, many flowers bloom around her, in the shining forest, ",
