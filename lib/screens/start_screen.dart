@@ -152,10 +152,10 @@ class _StartScreenState extends State<StartScreen>
                       ),
                       SizedBox(height: 12),
                       Text(
-                        "Welcome to Magical Vibe",
+                        "Welcome to Magical Vibe Ver.β 0.1",
                         style: TextStyle(
                           fontFamily: 'Cinzel',
-                          fontSize: 28, // Slightly smaller than ElementSelection to fit
+                          fontSize: 26, // Slightly smaller than ElementSelection to fit
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           letterSpacing: 1.5,

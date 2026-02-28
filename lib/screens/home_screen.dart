@@ -338,11 +338,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      "最高画質で精霊を召喚中...\n3分ほどかかる場合があります。",
+                      "最高画質で精霊を召喚中...3分ほどかかる場合があります。\nSummoning spirits at maximum quality...This may take up to 3 minutes.",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Cinzel',
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         shadows: [Shadow(color: Colors.purpleAccent, blurRadius: 10)],

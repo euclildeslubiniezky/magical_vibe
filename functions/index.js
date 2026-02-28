@@ -19,7 +19,7 @@ exports.generateTransformationVideo = onCall({
   console.log(`--- 召喚儀式開始: 属性 [${attribute}] ---`);
 
   // 【最高画質・魔法少女の統一感プロンプト】
-  const baseQuality = "cinematic full body shot of a young magical girl, youthful face, elegant standing pose, closed legs, legs together, balanced stance, masterpiece, 8k, ";
+  const baseQuality = "cinematic full body shot of a young magical girl, bridal gown, choker, brooch, youthful face, elegant standing pose and don't move, closed legs and don't move, keep your feet together and don't move, maintain a stable posture and don't move, masterpiece, 8k, ";
   const handStable = "hands clearly visible, five clearly separated fingers, correct finger anatomy, natural relaxed hand pose, no extra fingers, no fused fingers, ";
   const dressStable = "magical girl outfit formed from light energy, elegant silhouette, symmetrical design, smooth fabric, full body visible, ";
   const hairOptions = ["long blonde hair", "long bright brown hair", "long silver hair", "long black hair", "long pastel pink hair", "long light blue hair"];
@@ -36,6 +36,27 @@ exports.generateTransformationVideo = onCall({
     'Light': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",radiant angel big wings, magical staff, spreading divine light, many fractal balls around her, in the heavenly sky, ",
     'Dark': baseQuality + randomHair + ", " + handStable + dressStable + randomDress + ",shadow bat big wings, magical staff, spreading purple lightning-bolt, devil horns from the head, many purple lightning-bolt around her, in the castlevania, ",
   };
+
+  const hairOptions = [
+    "long blonde hair",
+    "long silver hair",
+    "long bright brown hair",
+    "long blonde ponytail hair",
+    "long silver ponytail hair",
+    "long bright brown ponytail hair",
+  ];
+
+  const dressOptions = [
+    "long flowing magical dress",
+    "long elegant layered dress",
+    "long frilled magical outfit",
+    "long butterfly themed dress",
+    "long celestial star themed dress",
+    "long crystal ornament dress",
+  ];
+
+  const randomHair = randomPick(hairOptions);
+  const randomDress = randomPick(dressOptions);
 
   const prompt = prompts[attribute] || prompts['Fire'];
 
@@ -72,12 +93,11 @@ exports.generateTransformationVideo = onCall({
     const staffName = staffPrompts[attribute] || "magical staff";
 
     // Dynamic Cinematic Transformation Prompt
-    const videoPrompt = `The video begins with a close-up of the young magical girl's determined face. Suddenly, powerful ${attribute} energy erupts around her. The camera rapidly zooms out to reveal her full body as her magical outfit forms in radiant light. She holds her ${staffName} confidently in one hand. Dynamic cinematic lighting, dramatic many particles. Perfect hands, five fingers visible, stable anatomy. 5 second powerful transformation sequence.`;
-
+    const videoPrompt = `The video begins with a close-up of a young magical girl's determined face. Suddenly, powerful ${attribute} energy explodes around her, forming a magical costume within a blazing light. A drone camera quickly zooms out to reveal her full body. She holds a confident ${staffName} in one hand. Dynamic cinematic lighting, dramatic multiple particles. Perfect hand, five fingers clearly visible, stable anatomical structure. A powerful 5-second transformation sequence.`;
     const videoResponse = await axios.post('https://fal.run/fal-ai/kling-video/v1.5/pro/image-to-video', {
       image_url: imageUrl,
       prompt: videoPrompt,
-      negative_prompt: "adult woman, mature face, close up, macro shot, only hands, cropped face, cropped body, extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, broken arms, extra limbs, blurry hands, malformed body, broken fingers, malformed hands, blurry hands, cropped hands, distorted fingers",
+      negative_prompt: "only hands, extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, broken arms, extra limbs, blurry hands, malformed body, broken fingers, malformed hands, blurry hands, cropped hands, distorted fingers, spread regs,"
       duration: duration,
       mode: "high_quality" // 最高画質モード
     }, {
