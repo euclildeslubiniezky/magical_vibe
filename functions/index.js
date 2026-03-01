@@ -4,8 +4,6 @@ const { initializeApp } = require("firebase-admin/app");
 const axios = require("axios");
 
 initializeApp();
-
-// Secret
 const falApiKey = defineSecret("FAL_SECRET_KEY");
 
 /* =========================
@@ -19,104 +17,115 @@ function randomPick(arr) {
    Attribute Tables
 ========================= */
 
-// 羽根（←Kling側へ移す）
-const wingPrompts = {
-  Fire: "flaming phoenix big wings",
-  Water: "fluid ribbon big wings",
-  Thunder: "lightning-bolt big wings",
-  Ice: "sharp crystal big wings",
-  Wind: "floating feather big wings",
-  Light: "radiant angel big wings",
-  Dark: "shadow bat big wings",
-};
-
-// 杖（←Flux側へ固定で描く）
-const staffPrompts = {
-  Fire: "flaming phoenix long staff",
-  Water: "crystal trident long staff",
-  Thunder: "lightning spear long staff",
-  Ice: "crystal ice long staff",
-  Wind: "emerald flower long staff",
-  Light: "radiant golden long staff",
-  Dark: "purple lightning-bolt long staff",
-};
-
-// 場所（←Flux側の最後に必ず入れる）
 const locationPrompts = {
   Fire: "in the great volcano",
   Water: "in the shining sea",
-  Thunder: "in the lightning-bolt",
-  Ice: "in the snow",
-  Wind: "in the shining forest",
+  Thunder: "in the lightning storm",
+  Ice: "in the frozen snow field",
+  Wind: "in the Forest of Many Glowing Flowers",
   Light: "in the heavenly sky",
   Dark: "in the castlevania",
 };
 
-function safeAttribute(attribute) {
-  return wingPrompts[attribute] ? attribute : "Fire";
-}
+const particlePrompts = {
+  Fire: "many floating fire balls and embers",
+  Water: "many floating water spheres, floating blue water balls, glossy bubbles",
+  Thunder: "electric sparks and vertical lightning particles",
+  Ice: "floating ice crystals and snow particles",
+  Wind: "many shining flowers and glowing petals swirling in the air",
+  Light: "many fractal light motes and radiant sparkles",
+  Dark: "purple lightning particles and dark smoke motes",
+};
+
+const wingPrompts = {
+  Fire: "flaming phoenix wings, wide feathered fire wings",
+  Water: "fluid ribbon water wings, translucent flowing wings",
+  Thunder: "sharp lightning-bolt wings with electric arcs",
+  Ice: "crystal shard wings with prismatic reflections",
+  Wind: "airy feather wings surrounded by flower petals",
+  Light: "radiant angel wings with luminous layers",
+  Dark: "shadow bat wings with smoky purple aura",
+};
+
+const staffPrompts = {
+  Fire: "long flaming phoenix sword, ornate symmetrical weapon",
+  Water: "long crystal trident staff, transparent and symmetrical",
+  Thunder: "long lightning spear staff, sharp and metallic",
+  Ice: "long crystal ice staff, solid and symmetrical",
+  Wind: "long emerald flower staff with elegant carvings",
+  Light: "long radiant golden staff with halo ornament",
+  Dark: "long purple lightning staff with dark crystal core",
+};
 
 /* =========================
-   Build Prompts
+   Flux Prompt (Lightweight)
 ========================= */
 
-function buildFluxPrompt(attribute, randomHair, randomDress) {
-  // 要望：髪は現状のまま（カラーを追加するなどはしない）
-  // ※元のセットを維持
-  const baseQuality =
-    "cinematic full body shot of a young magical girl, bridal gown, choker, brooch, " +
-    "youthful face, elegant standing pose and don't move, closed legs and don't move, " +
-    "keep your feet together and don't move, maintain a stable posture and don't move, " +
-    "masterpiece, photorealistic 8k, ";
+function buildFluxPrompt(attribute, randomHair) {
 
-  const handStable =
-    "hands clearly visible, five clearly separated fingers, correct finger anatomy, " +
-    "natural relaxed hand pose, no extra fingers, no fused fingers, ";
+  const headItem =
+    attribute === "Dark"
+      ? "long horns of the devil on the head"
+      : "tiara with a veil";
 
-  const dressStable =
-    "magical girl outfit formed from light energy, elegant silhouette, symmetrical design, " +
-    "smooth fabric, full body visible, ";
+  const base =
+    "cinematic full body shot of a young magical girl, " +
+    `${headItem}, youthful face, elegant stable standing pose, ` +
+    "legs together, feet together, no wide stance, masterpiece, photorealistic 8k, ";
 
-  const staff = staffPrompts[attribute] || "magical staff";
-  const place = locationPrompts[attribute] || locationPrompts.Fire;
+  const dressOptions = {
+    Fire: "deep crimson and gold magical dress",
+    Water: "sapphire blue and pearl magical dress",
+    Thunder: "electric violet and silver magical dress",
+    Ice: "icy blue and white crystal dress",
+    Wind: "emerald green floral magical dress",
+    Light: "pure white and gold divine dress",
+    Dark: "black and purple gothic magical dress",
+  };
 
-  // ★重要：Fluxでは羽根を入れない（羽根はKlingで“出現”）
-  // ただし、場所は「そのまま維持」の要望なので入れる
-  // ついでに「杖が壊れる」対策として、Fluxで杖の造形を確定させる（具体ワードを入れる）
   return (
-    baseQuality +
+    base +
     `${randomHair}, ` +
-    handStable +
-    dressStable +
-    `${randomDress}, ` +
-    `${staff}, ` +
-    "spreading magical energy, " +
-    `${place}, `
+    `${dressOptions[attribute]}, ` +
+    `${particlePrompts[attribute]}, ` +
+    `${locationPrompts[attribute]}, `
   );
 }
 
-function buildKlingVideoPrompt(attribute) {
-  const wing = wingPrompts[attribute] || "mystical big wings";
-  // 4秒で変身完了、最後1秒は余韻
-  // 「羽根は途中で出る」を強制（start = no wings / mid = forming / end = fully unfolded）
-  // 「杖を壊さない」を強化（do not break / do not melt / do not morph）
+/* =========================
+   Kling Prompt (Generate Wings + Staff)
+========================= */
+
+function buildKlingPrompt(attribute) {
+
+  const wing = wingPrompts[attribute];
+  const staff = staffPrompts[attribute];
+
   return `
-The video begins with a close-up of a young magical girl's determined face.
-No wings at the start. Keep her staff intact and unchanged.
+The video begins with a close-up of her determined face.
 
-Suddenly, powerful ${attribute} energy erupts around her.
-A drone camera quickly zooms out to reveal her full body.
+Large cinematic zoom-out to full body reveal (wide camera movement).
 
-From 0s to 4s: transformation completes fully.
-Her costume forms in radiant light, particles surge dramatically.
-Wings appear during the transformation (NOT at the start):
-${wing} materialize from energy around 2s, then fully unfold by 4s.
+From 0s to 4s:
+Transformation energy explodes around her.
 
-From 4s to 5s: hold the final heroic pose with subtle motion only
-(gentle particles, soft energy shimmer). No additional changes.
+At 1.5s:
+A ${staff} forms from pure energy in her hand.
+The weapon must remain long, symmetrical, stable.
+Do not shrink. Do not morph.
 
-Perfect hands, correct anatomy, five fingers visible.
-Cinematic lighting, dramatic but stable framing.
+At 2s:
+${wing} grow and fully unfold.
+Wings must remain large and stable.
+
+Strong cinematic lighting.
+Smooth dramatic camera motion.
+
+From 4s to 5s:
+Hold final heroic pose with subtle motion only.
+
+Legs together. Stable posture.
+Perfect hands. Five fingers visible.
 `;
 }
 
@@ -132,39 +141,21 @@ exports.generateTransformationVideo = onCall(
     region: "us-central1",
   },
   async (request) => {
-    const { attribute, duration = 5 } = request.data;
-
-    const attr = safeAttribute(attribute);
-    console.log(`--- 召喚儀式開始: 属性 [${attr}] / duration=${duration} ---`);
+    const { attribute = "Fire", duration = 5 } = request.data;
 
     try {
       const apiKey = falApiKey.value();
 
-      // 髪：現状維持（あなたの最初のセット）
       const hairOptions = [
         "long blonde hair",
-        "long bright brown hair",
         "long silver hair",
-        "long black hair",
-        "long pastel pink hair",
-        "long light blue hair",
-      ];
-
-      const dressOptions = [
-        "long flowing magical dress",
-        "long elegant layered dress",
-        "long frilled magical outfit",
-        "long butterfly themed dress",
-        "long celestial star themed dress",
-        "long crystal ornament dress",
+        "long bright brown hair",
       ];
 
       const randomHair = randomPick(hairOptions);
-      const randomDress = randomPick(dressOptions);
 
-      // 1) Flux 静止画（杖あり・羽根なし・場所あり）
-      console.log("工程1: 最高画質の原画を錬成中（杖あり・羽根なし）...");
-      const fluxPrompt = buildFluxPrompt(attr, randomHair, randomDress);
+      /* 1. Flux */
+      const fluxPrompt = buildFluxPrompt(attribute, randomHair);
 
       const imageResponse = await axios.post(
         "https://fal.run/fal-ai/flux-pro/v1.1",
@@ -174,54 +165,45 @@ exports.generateTransformationVideo = onCall(
           height: 720,
         },
         {
-          headers: { Authorization: `Key ${apiKey}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Key ${apiKey}` },
           timeout: 60000,
         }
       );
 
-      const imageUrl = imageResponse?.data?.images?.[0]?.url;
-      if (!imageUrl) throw new Error("Flux returned no image URL");
-      console.log("工程1完了: 原画URL取得");
+      const imageUrl = imageResponse.data.images[0].url;
 
-      // 2) Kling 動画（羽根を途中で出す）
-      console.log("工程2: 生命を吹き込み中（Kling v1.5 Pro / High Quality）...");
-
-      const videoPrompt = buildKlingVideoPrompt(attr);
+      /* 2. Kling */
+      const klingPrompt = buildKlingPrompt(attribute);
 
       const videoResponse = await axios.post(
         "https://fal.run/fal-ai/kling-video/v1.5/pro/image-to-video",
         {
           image_url: imageUrl,
-          prompt: videoPrompt,
-
-          // 杖崩れ対策・手崩れ対策・羽根消失対策を入れる
-          negative_prompt:
-            "broken staff, cracked staff, melted staff, warped staff, deformed staff, " +
-            "extra fingers, missing fingers, bad hands, deformed hands, mutated anatomy, " +
-            "broken arms, extra limbs, blurry hands, malformed body, cropped body, " +
-            "disappearing wings, hidden wings, low quality, blurry, jittery camera",
-
-          // durationは5固定推奨（あなたのUX方針）
+          prompt: klingPrompt,
           duration: duration,
           mode: "high_quality",
+          negative_prompt:
+            "small stick, tiny rod, short staff, broken staff, " +
+            "wide stance, spread legs, bowlegged, pigeon-toed, " +
+            "extra fingers, missing fingers, deformed hands, " +
+            "low quality, blurry, jittery camera",
         },
         {
-          headers: { Authorization: `Key ${apiKey}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Key ${apiKey}` },
           timeout: 480000,
         }
       );
 
-      const videoUrl = videoResponse?.data?.video?.url;
-      if (!videoUrl) throw new Error("Kling returned no video URL");
+      return {
+        success: true,
+        videoUrl: videoResponse.data.video.url,
+      };
 
-      console.log("工程2完了: 精霊が姿を現しました！");
-      return { success: true, videoUrl };
     } catch (error) {
-      console.error(
-        "【召喚失敗】:",
-        error.response ? JSON.stringify(error.response.data) : error.message
+      throw new HttpsError(
+        "internal",
+        `Transformation failed: ${error.message}`
       );
-      throw new HttpsError("internal", `精霊が姿を現しませんでした: ${error.message}`);
     }
   }
 );
