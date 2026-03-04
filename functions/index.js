@@ -14,41 +14,55 @@ function randomPick(arr) {
 }
 
 /* =========================
-   Attribute Tables
+   World Tables (Flux)
 ========================= */
 
 const locationPrompts = {
   Fire: "in the great volcano",
   Water: "in the shining sea",
-  Thunder: "in the lightning storm",
-  Ice: "in the frozen snow field",
-  Wind: "in the Forest of Many Glowing Flowers",
+  Thunder: "in the vertical lightning bolts with hard rain on the cliff",
+  Ice: "in the frozen crystal field",
+  Wind: "in the Many Glowing Flowers",
   Light: "in the heavenly sky",
-  Dark: "in the castlevania",
+  Dark: "inside the dark castlevania throne hall",
 };
 
 const particlePrompts = {
-  Fire: "many floating fire balls and embers",
-  Water: "many floating water spheres, floating blue water balls, glossy bubbles",
-  Thunder: "electric sparks and vertical lightning particles",
-  Ice: "floating ice crystals and snow particles",
-  Wind: "many shining flowers and glowing petals swirling in the air",
-  Light: "many fractal light motes and radiant sparkles",
-  Dark: "purple lightning particles and dark smoke motes",
+  Fire: "many floating fire balls and embers around her",
+  Water: "many transparent water spheres floating in mid-air around her",
+  Thunder: "many vertical lightning bolts striking in the around her",
+  Ice: "many floating ice crystals and light snow particles around her",
+  Wind: "many glowing flower petals swirling gently around her",
+  Light: "many radiant light motes floating in the air and around her",
+  Dark: "subtle purple lightning arcs and dark smoke particles around her",
 };
 
+const dressPrompts = {
+  Fire: "crimson and gold layered magical dress with rich volume",
+  Water: "sapphire flowing magical dress liquid-like folds with rich volume",
+  Thunder: "violet and silver sharp-edged magical dress with rich volume",
+  Ice: "icy blue crystal layered magical dress with rich volume",
+  Wind: "emerald floral magical dress flowing petals with rich volume",
+  Light: "white and gold divine magical dress with rich volume",
+  Dark: "black and purple gothic magical dress with rich volume",
+};
+
+/* =========================
+   Kling Tables
+========================= */
+
 const wingPrompts = {
-  Fire: "flaming phoenix wings, wide feathered fire wings",
-  Water: "fluid ribbon water wings, translucent flowing wings",
+  Fire: "flaming phoenix wings, fiercely burning wings",
+  Water: "flowing translucent water wings, translucent flowing wings",
   Thunder: "sharp lightning-bolt wings with electric arcs",
-  Ice: "crystal shard wings with prismatic reflections",
-  Wind: "airy feather wings surrounded by flower petals",
+  Ice: "feathers made of ice crystals that reflect light",
+  Wind: "airy feather wings surrounded by petals",
   Light: "radiant angel wings with luminous layers",
-  Dark: "shadow bat wings with smoky purple aura",
+  Dark: "purple bat wings with purple lightning-bolt",
 };
 
 const staffPrompts = {
-  Fire: "long flaming phoenix sword, ornate symmetrical weapon",
+  Fire: "long flaming phoenix staff, ornate symmetrical weapon",
   Water: "long crystal trident staff, transparent and symmetrical",
   Thunder: "long lightning spear staff, sharp and metallic",
   Ice: "long crystal ice staff, solid and symmetrical",
@@ -58,42 +72,31 @@ const staffPrompts = {
 };
 
 /* =========================
-   Flux Prompt (Lightweight)
+   Flux Prompt
 ========================= */
 
-function buildFluxPrompt(attribute, randomHair) {
+function buildFluxPrompt(attribute, hair) {
 
   const headItem =
     attribute === "Dark"
       ? "long horns of the devil on the head"
       : "tiara with a veil";
 
-  const base =
-    "cinematic full body shot of a young magical girl, " +
-    `${headItem}, youthful face, elegant stable standing pose, ` +
-    "legs together, feet together, no wide stance, masterpiece, photorealistic 8k, ";
-
-  const dressOptions = {
-    Fire: "deep crimson and gold magical dress",
-    Water: "sapphire blue and pearl magical dress",
-    Thunder: "electric violet and silver magical dress",
-    Ice: "icy blue and white crystal dress",
-    Wind: "emerald green floral magical dress",
-    Light: "pure white and gold divine dress",
-    Dark: "black and purple gothic magical dress",
-  };
-
-  return (
-    base +
-    `${randomHair}, ` +
-    `${dressOptions[attribute]}, ` +
-    `${particlePrompts[attribute]}, ` +
-    `${locationPrompts[attribute]}, `
-  );
+  return `
+cinematic full body shot of a young magical girl,
+${headItem},
+${hair},
+legs together, feet together, stable elegant posture,
+photorealistic, masterpiece, 8k,
+${dressPrompts[attribute]},
+${particlePrompts[attribute]},
+${locationPrompts[attribute]},
+bright cinematic environment lighting,
+`.trim();
 }
 
 /* =========================
-   Kling Prompt (Generate Wings + Staff)
+   Kling Prompt (Stable Mode)
 ========================= */
 
 function buildKlingPrompt(attribute) {
@@ -102,35 +105,35 @@ function buildKlingPrompt(attribute) {
   const staff = staffPrompts[attribute];
 
   return `
-The video begins with a close-up of her determined face.
+Start with close-up of her determined face.
 
-Large cinematic zoom-out to full body reveal (wide camera movement).
+The drone camera zooms out and pans to capture her full figure.
 
 From 0s to 4s:
-Transformation energy explodes around her.
+A controlled magical energy surge expands gently (NOT chaotic explosion).
 
 At 1.5s:
-A ${staff} forms from pure energy in her hand.
-The weapon must remain long, symmetrical, stable.
-Do not shrink. Do not morph.
+A ${staff} forms from stable light energy in her right hand.
+The staff must remain long, symmetrical, stable,
+and must remain in her hand until the end.
 
 At 2s:
-${wing} grow and fully unfold.
-Wings must remain large and stable.
+${wing} grow from her back attachment points.
+Wings must stay attached to her body and aligned.
 
-Strong cinematic lighting.
-Smooth dramatic camera motion.
+Camera movement must be smooth.No violent shaking.
+Continuous stable 5-second sequence.
 
 From 4s to 5s:
-Hold final heroic pose with subtle motion only.
+Hold final heroic pose with subtle motion.
 
-Legs together. Stable posture.
-Perfect hands. Five fingers visible.
-`;
+Legs together.
+Perfect hands, five fingers visible.
+`.trim();
 }
 
 /* =========================
-   Callable Function
+   Callable
 ========================= */
 
 exports.generateTransformationVideo = onCall(
@@ -141,6 +144,7 @@ exports.generateTransformationVideo = onCall(
     region: "us-central1",
   },
   async (request) => {
+
     const { attribute = "Fire", duration = 5 } = request.data;
 
     try {
@@ -161,6 +165,8 @@ exports.generateTransformationVideo = onCall(
         "https://fal.run/fal-ai/flux-pro/v1.1",
         {
           prompt: fluxPrompt,
+          negative_prompt:
+            "adult woman, wide stance, spread legs, extra fingers, deformed hands, wings, staff",
           width: 1280,
           height: 720,
         },
@@ -180,13 +186,10 @@ exports.generateTransformationVideo = onCall(
         {
           image_url: imageUrl,
           prompt: klingPrompt,
-          duration: duration,
+          duration,
           mode: "high_quality",
           negative_prompt:
-            "small stick, tiny rod, short staff, broken staff, " +
-            "wide stance, spread legs, bowlegged, pigeon-toed, " +
-            "extra fingers, missing fingers, deformed hands, " +
-            "low quality, blurry, jittery camera",
+            "broken staff, short staff, shrinking staff, detached wings, jittery camera, violent explosion",
         },
         {
           headers: { Authorization: `Key ${apiKey}` },
@@ -200,10 +203,7 @@ exports.generateTransformationVideo = onCall(
       };
 
     } catch (error) {
-      throw new HttpsError(
-        "internal",
-        `Transformation failed: ${error.message}`
-      );
+      throw new HttpsError("internal", error.message);
     }
   }
 );
