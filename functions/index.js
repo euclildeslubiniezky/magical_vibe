@@ -34,7 +34,7 @@ const particlePrompts = {
   Ice: "many floating ice crystals and light snow particles around her",
   Wind: "many glowing flower petals swirling gently around her",
   Light: "many radiant light motes floating in the air and around her",
-  Dark: "subtle purple lightning arcs and dark smoke particles around her",
+  Dark: "many purple lightning arcs and purple lightning particles around her",
 };
 
 const dressPrompts = {
@@ -103,11 +103,12 @@ function buildKlingPrompt(attribute) {
 
   const wing = wingPrompts[attribute];
   const staff = staffPrompts[attribute];
-
+  const particle = particlePrompts[attribute];
   return `
 Start with close-up of her determined face.
 
 The drone camera zooms out and pans to capture her full figure.
+${particle} must never be removed until the very end.
 
 From 0s to 4s:
 A controlled magical energy surge expands gently (NOT chaotic explosion).
@@ -118,16 +119,19 @@ The staff must remain long, symmetrical, stable,
 and must remain in her hand until the end.
 
 At 2s:
-${wing} grow from her back attachment points.
-Wings must stay attached to her body and aligned.
+${wing} must gently materializes from the connection point on her back.
+Both Wings must stay attached to her body and aligned.
 
 Camera movement must be smooth.No violent shaking.
 Continuous stable 5-second sequence.
 
 From 4s to 5s:
 Hold final heroic pose with subtle motion.
+The ${staff} must be maintained until the end,
+it must not be thrown or disappear.
 
-Legs together.
+Legs together. Do not spread them,
+keep them together in a feminine manner.
 Perfect hands, five fingers visible.
 `.trim();
 }
@@ -152,8 +156,9 @@ exports.generateTransformationVideo = onCall(
 
       const hairOptions = [
         "long blonde hair",
-        "long silver hair",
         "long bright brown hair",
+        "long ponytail blonde hair with rich volume",
+        "long ponytail bright brown hair with rich volume",
       ];
 
       const randomHair = randomPick(hairOptions);
@@ -189,7 +194,7 @@ exports.generateTransformationVideo = onCall(
           duration,
           mode: "high_quality",
           negative_prompt:
-            "broken staff, short staff, shrinking staff, detached wings, jittery camera, violent explosion",
+            "broken staff, short staff, shrinking staff, detached wings, jittery camera, violent explosion, while sitting, without standing up",
         },
         {
           headers: { Authorization: `Key ${apiKey}` },
