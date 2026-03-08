@@ -1,6 +1,8 @@
 import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 import 'dart:html' as html; // For Web Download
@@ -15,7 +17,9 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// GeneratedVideoPlayer with Custom Controls & Web Download
+// ==============================
+// Generated Video Player
+// ==============================
 class GeneratedVideoPlayer extends StatefulWidget {
   final String videoUrl;
 
@@ -34,10 +38,11 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
     super.initState();
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
       ..initialize().then((_) {
+        if (!mounted) return;
         setState(() {
           _isInitialized = true;
         });
-        _controller.setLooping(true); // Default looping
+        _controller.setLooping(true);
         _controller.play();
       });
   }
@@ -49,7 +54,6 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
   }
 
   void _downloadVideo() {
-    // Web download logic: Direct download without opening new tabs
     final anchor = html.AnchorElement(href: widget.videoUrl)
       ..setAttribute("download", "spirit_video.mp4")
       ..click();
@@ -58,28 +62,26 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      return const Center(child: CircularProgressIndicator(color: Colors.purpleAccent));
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.purpleAccent),
+      );
     }
 
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
-        // 1. Video Layer
         Center(
           child: AspectRatio(
             aspectRatio: _controller.value.aspectRatio,
             child: VideoPlayer(_controller),
           ),
         ),
-
-        // 2. Custom Controls Layer (Always Visible)
         Container(
           height: 60,
-          color: Colors.black.withOpacity(0.6), // Semi-transparent black background
+          color: Colors.black.withOpacity(0.6),
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             children: [
-              // Play/Pause Button
               IconButton(
                 icon: Icon(
                   _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
@@ -93,8 +95,6 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
                   });
                 },
               ),
-              
-              // Progress Bar
               Expanded(
                 child: VideoProgressIndicator(
                   _controller,
@@ -106,12 +106,10 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
                   ),
                 ),
               ),
-              
-              // Download Button
               IconButton(
                 icon: const Icon(Icons.download, color: Colors.white),
                 onPressed: _downloadVideo,
-                tooltip: '保存する',
+                tooltip: '保存する Save',
               ),
             ],
           ),
@@ -121,13 +119,15 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
   }
 }
 
+// ==============================
+// Home Screen
+// ==============================
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _mediaUrl;
   bool _isLoading = false;
   double _progress = 0.0;
   Timer? _timer;
-  
-  // Animation Controllers for UI
+
   late final AnimationController _entryController;
   late final AnimationController _rotationController;
   late final AnimationController _starController;
@@ -137,6 +137,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final Animation<double> _starAnimation;
 
   String? _selectedAttribute;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
   final List<Map<String, dynamic>> _elements = [
     {'name': 'Fire', 'color': const Color(0xFFFF4500)},
@@ -155,7 +159,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _selectedAttribute = widget.initialAttribute;
     }
 
-    // 1. Entry Fade
     _entryController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -165,20 +168,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeOut,
     );
 
-    // 2. Slow Rotation (Magic Circle) - 20s
     _rotationController = AnimationController(
       duration: const Duration(seconds: 20),
       vsync: this,
     )..repeat();
 
-    // 3. Twinkling Stars
     _starController = AnimationController(
       duration: const Duration(seconds: 4),
       vsync: this,
     )..repeat(reverse: true);
-    _starAnimation = CurvedAnimation(parent: _starController, curve: Curves.easeInOut);
+    _starAnimation =
+        CurvedAnimation(parent: _starController, curve: Curves.easeInOut);
 
-    // 4. Pulse
     _pulseController = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
@@ -198,27 +199,200 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _resetAll() {
-    setState(() {
-      _mediaUrl = null;
-      _isLoading = false;
-    });
-    if (!_entryController.isAnimating) {
-        _entryController.forward(from: 0.0);
-    }
-  }
+  _timer?.cancel();
+
+  setState(() {
+    _mediaUrl = null;     // 動画表示だけ閉じる
+    _isLoading = false;
+    _progress = 0.0;
+    // _selectedAttribute は消さない
+  });
+}
 
   void _startTimer() {
     _progress = 0.0;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       setState(() {
         if (_progress < 0.95) _progress += 0.01;
       });
     });
   }
 
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream(User? user) {
+    if (user == null) return null;
+    return _firestore.collection('users').doc(user.uid).snapshots();
+  }
+
+  Future<void> _showLoginDialog() async {
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        bool isSigningIn = false;
+
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            Future<void> signInWithGoogle() async {
+              try {
+                setLocalState(() => isSigningIn = true);
+
+                final googleProvider = GoogleAuthProvider()
+                  ..addScope('email')
+                  ..setCustomParameters({'prompt': 'select_account'});
+
+                final userCredential =
+                    await _auth.signInWithPopup(googleProvider);
+
+                final user = userCredential.user;
+                if (user != null) {
+                  await _ensureUserDocument(user);
+                }
+
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text('ログインに失敗しました Login failed: $e'),
+                    ),
+                  );
+                }
+              } finally {
+                if (context.mounted) {
+                  setLocalState(() => isSigningIn = false);
+                }
+              }
+            }
+
+            return Dialog(
+              backgroundColor: const Color(0xFF101020),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: BorderSide(
+                  color: Colors.white.withOpacity(0.12),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome,
+                      size: 48,
+                      color: Colors.purpleAccent,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'ログインが必要です Login is required.',
+                      style: TextStyle(
+                        fontFamily: 'Cinzel',
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '精霊の召喚にはログインが必要です。Login is required to summon spirits.\nGoogleアカウントでログインしてください。Please sign in with your Google account.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: isSigningIn ? null : signInWithGoogle,
+                        icon: isSigningIn
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.login),
+                        label: Text(
+                          isSigningIn ? 'ログイン中...Logging in...' : 'Googleでログイン Sign in with Google',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6A1B9A),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: isSigningIn
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                      child: const Text(
+                        '閉じる Close',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _ensureUserDocument(User user) async {
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final doc = await userRef.get();
+
+    if (!doc.exists) {
+      await userRef.set({
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': user.displayName,
+        'credits': 3,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      final data = doc.data();
+      if (data == null || !data.containsKey('credits')) {
+        await userRef.set({
+          'credits': 3,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    }
+  }
+
   Future<void> _generateMedia() async {
     if (_selectedAttribute == null) return;
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      await _showLoginDialog();
+      return;
+    }
+
+    await _ensureUserDocument(user);
 
     setState(() {
       _isLoading = true;
@@ -228,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _startTimer();
 
     try {
-      final result = await FirebaseFunctions.instance
+      final result = await _functions
           .httpsCallable(
             'generateTransformationVideo',
             options: HttpsCallableOptions(
@@ -237,10 +411,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           )
           .call({
             'attribute': _selectedAttribute,
-            'duration': 5, 
+            'duration': 5,
           });
 
       final url = result.data['videoUrl'];
+
+      if (!mounted) return;
 
       if (url != null) {
         _timer?.cancel();
@@ -249,23 +425,224 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _mediaUrl = url;
           _isLoading = false;
         });
+      } else {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('動画URLの取得に失敗しました。Failed to retrieve the video URL.'),
+          ),
+        );
       }
+    } on FirebaseFunctionsException catch (e) {
+      _timer?.cancel();
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      String message = '精霊が姿を現しませんでした。もう一度召喚してください。The spirit did not appear. Please summon it again.';
+
+      if (e.code == 'unauthenticated') {
+        message = 'ログイン後に精霊を召喚できます。You can summon spirits after logging in.';
+        await _showLoginDialog();
+      } else if (e.code == 'failed-precondition') {
+        message = '残りクレジットがありません。You have no remaining credits.';
+      } else if (e.code == 'not-found') {
+        message = 'ユーザー情報が見つかりませんでした。再ログインしてください。User information not found. Please log in again.';
+      } else if (e.code == 'invalid-argument') {
+        message = '送信内容が正しくありません。The content you sent is incorrect.';
+      } else if (e.message != null && e.message!.isNotEmpty) {
+        message = e.message!;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } catch (e) {
       _timer?.cancel();
+      if (!mounted) return;
       setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('精霊が姿を現しませんでした。もう一度召喚してください。'),
+        SnackBar(
+          content: Text('エラーが発生しました。An error has occurred: $e'),
         ),
       );
     }
+  }
+
+  Future<void> _signOut() async {
+    await _auth.signOut();
+    if (!mounted) return;
+
+    setState(() {
+      _mediaUrl = null;
+      _isLoading = false;
+      _progress = 0.0;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('ログアウトしました。You have logged out.'),
+      ),
+    );
   }
 
   void _onElementSelected(String name) {
     setState(() {
       _selectedAttribute = name;
     });
+  }
+
+  Widget _buildTopStatusBar() {
+    return Positioned(
+      top: 24,
+      left: 20,
+      right: 20,
+      child: SafeArea(
+        child: StreamBuilder<User?>(
+          stream: _auth.authStateChanges(),
+          builder: (context, authSnapshot) {
+            final user = authSnapshot.data;
+            final userStream = _userDocStream(user);
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (_mediaUrl != null && !_isLoading)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios,
+                      color: Colors.white,
+                    ),
+                    onPressed: _resetAll,
+                  )
+                else
+                  const SizedBox(width: 48),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: true,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (user != null && userStream != null)
+                          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            stream: userStream,
+                            builder: (context, creditSnapshot) {
+                              final data = creditSnapshot.data?.data();
+                              final credits = data?['credits'] ?? 0;
+
+                              return _InfoChip(
+                                icon: Icons.bolt,
+                                label: 'Credits: $credits',
+                              );
+                            },
+                          ),
+                        const SizedBox(width: 10),
+                        if (user != null)
+                          PopupMenuButton<String>(
+                            color: const Color(0xFF1A1A2E),
+                            onSelected: (value) async {
+                              if (value == 'logout') {
+                                await _signOut();
+                              }
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: 'logout',
+                                child: Text(
+                                  'Logout',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                            child: _InfoChip(
+                              icon: Icons.account_circle,
+                              label:
+                                  user.displayName ?? user.email ?? 'Login',
+                            ),
+                          )
+                        else
+                          GestureDetector(
+                            onTap: _showLoginDialog,
+                            child: const _InfoChip(
+                              icon: Icons.login,
+                              label: 'Login',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserCreditPill() {
+    return StreamBuilder<User?>(
+      stream: _auth.authStateChanges(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+
+        if (user == null) {
+          return GestureDetector(
+            onTap: _showLoginDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.15),
+                ),
+              ),
+              child: const Text(
+                "ログインして召喚を開始",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: _userDocStream(user),
+          builder: (context, userDocSnapshot) {
+            final data = userDocSnapshot.data?.data();
+            final credits = data?['credits'] ?? 0;
+
+            return Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.15),
+                ),
+              ),
+              child: Text(
+                "残りクレジット: $credits",
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -276,63 +653,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Background components visible during selection or loading
           if (_mediaUrl == null) ...[
-              // 1. Deep Space Gradient Background
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF000000), // Black
-                      Color(0xFF0A0A2A), // Dark Navy
-                      Color(0xFF1A1A3A), // Deep Purple/Blue hint
-                    ],
-                  ),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF000000),
+                    Color(0xFF0A0A2A),
+                    Color(0xFF1A1A3A),
+                  ],
                 ),
               ),
-
-              // 2. Twinkling Stars
-              AnimatedBuilder(
-                animation: _starAnimation,
+            ),
+            AnimatedBuilder(
+              animation: _starAnimation,
+              builder: (context, child) {
+                return CustomPaint(
+                  size: Size.infinite,
+                  painter: _StarPainter(_starAnimation.value),
+                );
+              },
+            ),
+            Center(
+              child: AnimatedBuilder(
+                animation: _rotationController,
                 builder: (context, child) {
-                  return CustomPaint(
-                    size: Size.infinite,
-                    painter: _StarPainter(_starAnimation.value),
+                  return Transform.rotate(
+                    angle: _rotationController.value * 2 * math.pi,
+                    child: Opacity(
+                      opacity: 0.2,
+                      child: CustomPaint(
+                        size: const Size(600, 600),
+                        painter: _MagicCirclePainter(),
+                      ),
+                    ),
                   );
                 },
               ),
-
-              // 3. Rotating Magic Circle
-              Center(
-                child: AnimatedBuilder(
-                  animation: _rotationController,
-                  builder: (context, child) {
-                    return Transform.rotate(
-                      angle: _rotationController.value * 2 * math.pi,
-                      child: Opacity(
-                        opacity: 0.2,
-                        child: CustomPaint(
-                          size: const Size(600, 600),
-                          painter: _MagicCirclePainter(),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+            ),
           ],
-          
-          // Foreground
+
           if (_mediaUrl != null)
             Center(
               child: GeneratedVideoPlayer(videoUrl: _mediaUrl!),
             )
           else if (_isLoading)
-            // ローディング画面
             Container(
-              color: Colors.black.withOpacity(0.5), 
+              color: Colors.black.withOpacity(0.5),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -345,7 +714,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        shadows: [Shadow(color: Colors.purpleAccent, blurRadius: 10)],
+                        shadows: [
+                          Shadow(color: Colors.purpleAccent, blurRadius: 10)
+                        ],
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -363,19 +734,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             )
           else
-            // 下部UI (Element Selection)
             SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: Column(
                   children: [
-                    SizedBox(height: size.height * 0.15),
-                    
-                    // Title Area
+                    SizedBox(height: size.height * 0.18),
                     const Text(
                       "属性を選んでください",
                       style: TextStyle(
-                        fontFamily: 'Roboto', 
+                        fontFamily: 'Roboto',
                         fontSize: 16,
                         color: Colors.white70,
                         letterSpacing: 2.0,
@@ -385,7 +753,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     const Text(
                       "Choose Your Element",
                       style: TextStyle(
-                        fontFamily: 'Cinzel', 
+                        fontFamily: 'Cinzel',
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -395,10 +763,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
-
-                    const Spacer(), 
-                    
-                    // Element Selection Row
+                    const SizedBox(height: 14),
+                    _buildUserCreditPill(),
+                    const Spacer(),
                     SizedBox(
                       height: 120,
                       child: ListView.builder(
@@ -407,55 +774,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         itemCount: _elements.length,
                         itemBuilder: (context, index) {
                           final element = _elements[index];
-                          final isSelected = _selectedAttribute == element['name'];
+                          final isSelected =
+                              _selectedAttribute == element['name'];
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
                             child: _ElementButton(
-                               name: element['name'],
-                               color: element['color'],
-                               isSelected: isSelected,
-                               onTap: () => _onElementSelected(element['name']),
+                              name: element['name'],
+                              color: element['color'],
+                              isSelected: isSelected,
+                              onTap: () => _onElementSelected(element['name']),
                             ),
                           );
                         },
                       ),
                     ),
-                    
                     const SizedBox(height: 30),
-
-                    // Summon Button
                     _SummonButton(
-                      onTap: _selectedAttribute != null ? _generateMedia : null,
+                      onTap:
+                          _selectedAttribute != null ? _generateMedia : null,
                     ),
-
                     const SizedBox(height: 50),
                   ],
                 ),
               ),
             ),
 
-          // 戻るボタン
-          if (_mediaUrl != null && !_isLoading)
-            Positioned(
-              top: 50,
-              left: 20,
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios,
-                  color: Colors.white,
-                ),
-                onPressed: _resetAll,
-              ),
-            ),
+          _buildTopStatusBar(),
 
-          // シェアボタン
           if (_mediaUrl != null && !_isLoading)
             Positioned(
               top: 50,
               right: 20,
               child: FloatingActionButton.small(
                 onPressed: () =>
-                    Share.share("精霊を召喚しました！ $_mediaUrl"),
+                    Share.share("精霊を召喚しました！ I summoned a spirit! $_mediaUrl"),
                 child: const Icon(Icons.share),
               ),
             ),
@@ -465,8 +818,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// ------ UI Components ------
+// ==============================
+// Small Info Chip
+// ==============================
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
 
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white70, size: 18),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ==============================
+// UI Components
+// ==============================
 class _ElementButton extends StatelessWidget {
   final String name;
   final Color color;
@@ -482,13 +880,27 @@ class _ElementButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final outerShadow = BoxShadow(
+      color: isSelected ? color.withOpacity(0.6) : Colors.transparent,
+      blurRadius: isSelected ? 20 : 0,
+      spreadRadius: isSelected ? 2 : 0,
+      offset: Offset.zero,
+    );
+
+    final innerGlow = BoxShadow(
+      color: color.withOpacity(isSelected ? 1.0 : 0.7),
+      blurRadius: isSelected ? 10 : 6,
+      spreadRadius: isSelected ? 2 : 1,
+      offset: Offset.zero,
+    );
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         width: isSelected ? 80 : 70,
         height: isSelected ? 80 : 70,
-        curve: Curves.easeOutBack,
+        curve: Curves.easeOut,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: isSelected ? color.withOpacity(0.3) : Colors.black26,
@@ -496,29 +908,19 @@ class _ElementButton extends StatelessWidget {
             color: isSelected ? color : Colors.white24,
             width: isSelected ? 2.0 : 1.0,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.6),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  )
-                ]
-              : [],
+          boxShadow: [outerShadow],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-               width: isSelected ? 24 : 16,
-               height: isSelected ? 24 : 16,
-               decoration: BoxDecoration(
-                 color: color,
-                 shape: BoxShape.circle,
-                 boxShadow: [
-                   BoxShadow(color: color, blurRadius: 10, spreadRadius: 2),
-                 ],
-               ),
+              width: isSelected ? 24 : 16,
+              height: isSelected ? 24 : 16,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [innerGlow],
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -526,7 +928,8 @@ class _ElementButton extends StatelessWidget {
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.white54,
                 fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ],
@@ -545,6 +948,15 @@ class _SummonButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isEnabled = onTap != null;
 
+    final buttonShadow = BoxShadow(
+      color: isEnabled
+          ? const Color(0xFF7B1FA2).withOpacity(0.5)
+          : Colors.transparent,
+      blurRadius: isEnabled ? 15 : 0,
+      spreadRadius: 0,
+      offset: const Offset(0, 4),
+    );
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedOpacity(
@@ -557,22 +969,14 @@ class _SummonButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(28),
             gradient: isEnabled
                 ? const LinearGradient(
-                    colors: [Color(0xFF6A1B9A), Color(0xFF4A148C)], 
+                    colors: [Color(0xFF6A1B9A), Color(0xFF4A148C)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   )
                 : const LinearGradient(
                     colors: [Colors.grey, Colors.black54],
                   ),
-            boxShadow: isEnabled
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF7B1FA2).withOpacity(0.5),
-                      blurRadius: 15,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : [],
+            boxShadow: [buttonShadow],
             border: Border.all(
               color: Colors.white.withOpacity(0.2),
               width: 1,
@@ -595,8 +999,9 @@ class _SummonButton extends StatelessWidget {
   }
 }
 
-// ------ Painters ------
-
+// ==============================
+// Painters
+// ==============================
 class _StarPainter extends CustomPainter {
   final double animationValue;
 
@@ -608,15 +1013,17 @@ class _StarPainter extends CustomPainter {
     final random = math.Random(12345);
 
     for (int i = 0; i < 50; i++) {
-        double x = random.nextDouble() * size.width;
-        double y = random.nextDouble() * size.height;
-        double baseSize = random.nextDouble() * 2 + 1;
-        
-        double twinkle = math.sin((animationValue * 2 * math.pi) + random.nextDouble() * 10);
-        double opacity = (twinkle + 1) / 2 * 0.7 + 0.3;
+      final x = random.nextDouble() * size.width;
+      final y = random.nextDouble() * size.height;
+      final baseSize = random.nextDouble() * 2 + 1;
 
-        paint.color = Colors.white.withOpacity(opacity);
-        canvas.drawCircle(Offset(x, y), baseSize, paint);
+      final twinkle = math.sin(
+        (animationValue * 2 * math.pi) + random.nextDouble() * 10,
+      );
+      final opacity = (twinkle + 1) / 2 * 0.7 + 0.3;
+
+      paint.color = Colors.white.withOpacity(opacity);
+      canvas.drawCircle(Offset(x, y), baseSize, paint);
     }
   }
 
@@ -639,28 +1046,34 @@ class _MagicCirclePainter extends CustomPainter {
 
     final path = Path();
     for (int i = 0; i < 6; i++) {
-      double angle = (i * 2 * math.pi / 6) - (math.pi / 2);
-      double x = center.dx + radius * 0.95 * math.cos(angle);
-      double y = center.dy + radius * 0.95 * math.sin(angle);
-      if (i == 0) path.moveTo(x, y);
-      else path.lineTo(x, y);
+      final angle = (i * 2 * math.pi / 6) - (math.pi / 2);
+      final x = center.dx + radius * 0.95 * math.cos(angle);
+      final y = center.dy + radius * 0.95 * math.sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
     }
     path.close();
     canvas.drawPath(path, paint);
-    
-     final path2 = Path();
+
+    final path2 = Path();
     for (int i = 0; i < 6; i++) {
-      double angle = (i * 2 * math.pi / 6); 
-      double x = center.dx + radius * 0.95 * math.cos(angle);
-      double y = center.dy + radius * 0.95 * math.sin(angle);
-      if (i == 0) path2.moveTo(x, y);
-      else path2.lineTo(x, y);
+      final angle = i * 2 * math.pi / 6;
+      final x = center.dx + radius * 0.95 * math.cos(angle);
+      final y = center.dy + radius * 0.95 * math.sin(angle);
+      if (i == 0) {
+        path2.moveTo(x, y);
+      } else {
+        path2.lineTo(x, y);
+      }
     }
     path2.close();
     canvas.drawPath(path2, paint);
 
     canvas.drawCircle(center, radius * 0.6, paint);
-    
+
     final pathDiamond = Path();
     pathDiamond.moveTo(center.dx, center.dy - radius * 0.6);
     pathDiamond.lineTo(center.dx + radius * 0.6, center.dy);
@@ -669,12 +1082,15 @@ class _MagicCirclePainter extends CustomPainter {
     pathDiamond.close();
     canvas.drawPath(pathDiamond, paint);
 
-    final dotPaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
+    final dotPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
     for (int i = 0; i < 12; i++) {
-      double angle = i * (math.pi / 6);
-      double x = center.dx + radius * 0.8 * math.cos(angle);
-      double y = center.dy + radius * 0.8 * math.sin(angle);
-      canvas.drawCircle(Offset(x,y), 3, dotPaint);
+      final angle = i * (math.pi / 6);
+      final x = center.dx + radius * 0.8 * math.cos(angle);
+      final y = center.dy + radius * 0.8 * math.sin(angle);
+      canvas.drawCircle(Offset(x, y), 3, dotPaint);
     }
   }
 
