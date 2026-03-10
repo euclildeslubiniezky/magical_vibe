@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:async';
-import 'dart:html' as html; // For Web Download
+import 'dart:html' as html;
 import 'dart:math' as math;
 
 class HomeScreen extends StatefulWidget {
@@ -125,6 +125,7 @@ class _GeneratedVideoPlayerState extends State<GeneratedVideoPlayer> {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _mediaUrl;
   bool _isLoading = false;
+  bool _isPurchasing = false;
   double _progress = 0.0;
   Timer? _timer;
 
@@ -137,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final Animation<double> _starAnimation;
 
   String? _selectedAttribute;
+  bool _handledPaymentQuery = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -150,6 +152,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     {'name': 'Wind', 'color': const Color(0xFF00E676)},
     {'name': 'Light', 'color': const Color(0xFFFFF176)},
     {'name': 'Dark', 'color': const Color(0xFF9C27B0)},
+  ];
+
+  final List<Map<String, dynamic>> _creditPackages = const [
+    {'key': '3', 'credits': 3, 'price': '¥500'},
+    {'key': '10', 'credits': 10, 'price': '¥1,500'},
+    {'key': '20', 'credits': 20, 'price': '¥2,800'},
   ];
 
   @override
@@ -186,6 +194,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     )..repeat(reverse: true);
 
     _entryController.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handlePaymentQueryIfNeeded();
+    });
   }
 
   @override
@@ -198,16 +210,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _resetAll() {
-  _timer?.cancel();
+  Future<void> _handlePaymentQueryIfNeeded() async {
+    if (_handledPaymentQuery || !mounted) return;
+    _handledPaymentQuery = true;
 
-  setState(() {
-    _mediaUrl = null;     // 動画表示だけ閉じる
-    _isLoading = false;
-    _progress = 0.0;
-    // _selectedAttribute は消さない
-  });
-}
+    final payment = Uri.base.queryParameters['payment'];
+    if (payment == null) return;
+
+    String message;
+    if (payment == 'success') {
+      message =
+          '決済が完了しました。クレジット反映まで数秒かかる場合があります。\nPayment completed. Credits may take a few seconds to appear.';
+    } else if (payment == 'cancel') {
+      message = '購入をキャンセルしました。\nPurchase was cancelled.';
+    } else {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _resetAll() {
+    _timer?.cancel();
+
+    setState(() {
+      _mediaUrl = null;
+      _isLoading = false;
+      _progress = 0.0;
+    });
+  }
 
   void _startTimer() {
     _progress = 0.0;
@@ -290,7 +323,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'ログインが必要です Login is required.',
+                      'ログインが必要です \nLogin is required.',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Cinzel',
                         fontSize: 24,
@@ -300,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      '精霊の召喚にはログインが必要です。Login is required to summon spirits.\nGoogleアカウントでログインしてください。Please sign in with your Google account.',
+                      '精霊の召喚にはログインが必要です。\nLogin is required to summon spirits.\nGoogleアカウントでログインしてください。\nPlease sign in with your Google account.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white70,
@@ -325,7 +359,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               )
                             : const Icon(Icons.login),
                         label: Text(
-                          isSigningIn ? 'ログイン中...Logging in...' : 'Googleでログイン Sign in with Google',
+                          isSigningIn
+                              ? 'ログイン中...Logging in...'
+                              : 'Googleでログイン Sign in with Google',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -429,7 +465,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('動画URLの取得に失敗しました。Failed to retrieve the video URL.'),
+            content:
+                Text('動画URLの取得に失敗しました。Failed to retrieve the video URL.'),
           ),
         );
       }
@@ -438,15 +475,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      String message = '精霊が姿を現しませんでした。もう一度召喚してください。The spirit did not appear. Please summon it again.';
+      String message =
+          '精霊が姿を現しませんでした。もう一度召喚してください。The spirit did not appear. Please summon it again.';
 
       if (e.code == 'unauthenticated') {
-        message = 'ログイン後に精霊を召喚できます。You can summon spirits after logging in.';
+        message =
+            'ログイン後に精霊を召喚できます。You can summon spirits after logging in.';
         await _showLoginDialog();
       } else if (e.code == 'failed-precondition') {
         message = '残りクレジットがありません。You have no remaining credits.';
       } else if (e.code == 'not-found') {
-        message = 'ユーザー情報が見つかりませんでした。再ログインしてください。User information not found. Please log in again.';
+        message =
+            'ユーザー情報が見つかりませんでした。再ログインしてください。User information not found. Please log in again.';
       } else if (e.code == 'invalid-argument') {
         message = '送信内容が正しくありません。The content you sent is incorrect.';
       } else if (e.message != null && e.message!.isNotEmpty) {
@@ -469,6 +509,187 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+Future<void> _purchaseCredits(String packageKey) async {
+  final user = _auth.currentUser;
+  if (user == null) {
+    await _showLoginDialog();
+    return;
+  }
+
+  await _ensureUserDocument(user);
+
+  if (!mounted) return;
+  Navigator.of(context).pop();
+
+  setState(() {
+    _isPurchasing = true;
+  });
+
+  try {
+    // 念のため最新トークンを更新
+    await user.getIdToken(true);
+
+    final callable = _functions.httpsCallable(
+      'createCheckoutSession',
+      options: HttpsCallableOptions(
+        timeout: const Duration(minutes: 2),
+      ),
+    );
+
+    final result = await callable.call({
+      'packageKey': packageKey,
+    });
+
+    final data = result.data;
+    final url = data is Map ? data['url'] : null;
+
+    if (url == null || url is! String || url.isEmpty) {
+      throw Exception('Checkout URL was not returned.');
+    }
+
+    // Stripe Checkout へ移動
+    html.window.location.href = url;
+  } on FirebaseFunctionsException catch (e) {
+    if (!mounted) return;
+
+    String message =
+        '購入画面の作成に失敗しました。Failed to create checkout.';
+
+    if (e.code == 'unauthenticated') {
+      message =
+          '購入前にログインが必要です。Login is required before purchase.';
+    } else if (e.code == 'invalid-argument') {
+      message =
+          '購入内容が正しくありません。Invalid purchase package.';
+    } else if (e.code == 'internal') {
+      message =
+          '決済セッションの作成で内部エラーが発生しました。An internal error occurred while creating the checkout session.\n${e.message ?? ''}';
+    } else if (e.message != null && e.message!.isNotEmpty) {
+      message = '${e.code}: ${e.message!}';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
+    setState(() {
+      _isPurchasing = false;
+    });
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('購入エラー Purchase error: $e'),
+      ),
+    );
+
+    setState(() {
+      _isPurchasing = false;
+    });
+  }
+}
+
+  Future<void> _showPurchaseDialog() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      await _showLoginDialog();
+      return;
+    }
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: const Color(0xFF101020),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: Colors.white.withOpacity(0.12),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.shopping_cart_checkout,
+                  size: 44,
+                  color: Colors.purpleAccent,
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'クレジットを購入 Purchase Credits',
+                  style: TextStyle(
+                    fontFamily: 'Cinzel',
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Stripe Checkout で安全に購入します。\nPurchase safely with Stripe Checkout.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                ..._creditPackages.map(
+                  (pkg) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _isPurchasing
+                            ? null
+                            : () => _purchaseCredits(pkg['key'] as String),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1C1C34),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.12),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          '${pkg['credits']} credits / ${pkg['price']}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _isPurchasing
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text(
+                    '閉じる Close',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _signOut() async {
     await _auth.signOut();
     if (!mounted) return;
@@ -476,6 +697,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _mediaUrl = null;
       _isLoading = false;
+      _isPurchasing = false;
       _progress = 0.0;
     });
 
@@ -524,6 +746,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        if (user != null)
+                          GestureDetector(
+                            onTap: _showPurchaseDialog,
+                            child: _InfoChip(
+                              icon: Icons.add_shopping_cart,
+                              label: _isPurchasing
+                                  ? 'Opening Checkout...'
+                                  : 'Buy Credits',
+                            ),
+                          ),
+                        if (user != null) const SizedBox(width: 10),
                         if (user != null && userStream != null)
                           StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                             stream: userStream,
@@ -544,9 +777,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             onSelected: (value) async {
                               if (value == 'logout') {
                                 await _signOut();
+                              } else if (value == 'buy') {
+                                await _showPurchaseDialog();
                               }
                             },
                             itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: 'buy',
+                                child: Text(
+                                  'Buy Credits',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
                               PopupMenuItem(
                                 value: 'logout',
                                 child: Text(
@@ -558,7 +800,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: _InfoChip(
                               icon: Icons.account_circle,
                               label:
-                                  user.displayName ?? user.email ?? 'Login',
+                                  user.displayName ?? user.email ?? 'Account',
                             ),
                           )
                         else
@@ -588,28 +830,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final user = snapshot.data;
 
         if (user == null) {
-          return GestureDetector(
-            onTap: _showLoginDialog,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.15),
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: _showLoginDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.15),
+                    ),
+                  ),
+                  child: const Text(
+                    "ログインして召喚を開始 Start by logging in",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ),
-              child: const Text(
-                "ログインして召喚を開始",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
-                ),
-              ),
-            ),
+            ],
           );
         }
 
@@ -619,25 +866,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             final data = userDocSnapshot.data?.data();
             final credits = data?['credits'] ?? 0;
 
-            return Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.15),
+            return Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.15),
+                    ),
+                  ),
+                  child: Text(
+                    "残りクレジット Remaining credits: $credits",
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                "残りクレジット: $credits",
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
+                GestureDetector(
+                  onTap: _showPurchaseDialog,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6A1B9A).withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.purpleAccent.withOpacity(0.4),
+                      ),
+                    ),
+                    child: const Text(
+                      "クレジット購入 Buy Credits",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             );
           },
         );
@@ -807,8 +1085,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               top: 50,
               right: 20,
               child: FloatingActionButton.small(
-                onPressed: () =>
-                    Share.share("精霊を召喚しました！ I summoned a spirit! $_mediaUrl"),
+                onPressed: () => Share.share(
+                  "精霊を召喚しました！ I summoned a spirit! $_mediaUrl",
+                ),
                 child: const Icon(Icons.share),
               ),
             ),

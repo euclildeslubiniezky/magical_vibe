@@ -1,12 +1,34 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const Stripe = require("stripe");
+// redeploy for latest Stripe webhook secret
 
 admin.initializeApp();
 const db = admin.firestore();
 
 const falApiKey = defineSecret("FAL_SECRET_KEY");
+const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+
+/* =========================
+   Stripe Price Map
+========================= */
+const PRICE_MAP = {
+  "3": {
+    priceId: "price_1T94q7C2qeonX89sfddXPUIg",
+    credits: 3,
+  },
+  "10": {
+    priceId: "price_1T94rrC2qeonX89s9oIOi8By",
+    credits: 10,
+  },
+  "20": {
+    priceId: "price_1T94seC2qeonX89suopuvvxI",
+    credits: 20,
+  },
+};
 
 /* =========================
    Utils
@@ -168,7 +190,7 @@ Perfect hands with five fingers visible.
 }
 
 /* =========================
-   Main callable for Flutter
+   Video Generation Callable
 ========================= */
 exports.generateTransformationVideo = onCall(
   {
@@ -203,7 +225,6 @@ exports.generateTransformationVideo = onCall(
     let creditReserved = false;
 
     try {
-      // 1. 生成前にクレジットを1減算
       await db.runTransaction(async (tx) => {
         const userDoc = await tx.get(userRef);
 
@@ -245,7 +266,6 @@ exports.generateTransformationVideo = onCall(
 
       const randomHair = randomPick(hairOptions);
 
-      // 2. Flux
       const fluxPrompt = buildFluxPrompt(attribute, randomHair);
 
       console.log("Calling Flux...");
@@ -275,7 +295,6 @@ exports.generateTransformationVideo = onCall(
 
       console.log("Flux success:", imageUrl);
 
-      // 3. Kling
       const klingPrompt = buildKlingPrompt(attribute);
 
       console.log("Calling Kling...");
@@ -310,7 +329,6 @@ exports.generateTransformationVideo = onCall(
 
       console.log("Kling success:", videoUrl);
 
-      // 4. 成功ログ保存
       await generationLogRef.update({
         status: "completed",
         imageUrl,
@@ -330,7 +348,6 @@ exports.generateTransformationVideo = onCall(
         JSON.stringify(error?.response?.data || errorMessage, null, 2)
       );
 
-      // 5. 失敗ログ保存
       try {
         await generationLogRef.set(
           {
@@ -347,7 +364,6 @@ exports.generateTransformationVideo = onCall(
         console.error("Failed to write generation log:", logError.message);
       }
 
-      // 6. 生成失敗時のみクレジット返却
       if (creditReserved) {
         try {
           await userRef.update({
@@ -365,6 +381,156 @@ exports.generateTransformationVideo = onCall(
       }
 
       throw new HttpsError("internal", errorMessage);
+    }
+  }
+);
+
+/* =========================
+   Stripe Checkout Session Callable
+========================= */
+exports.createCheckoutSession = onCall(
+  {
+    region: "us-central1",
+    timeoutSeconds: 120,
+    memory: "512MiB",
+    secrets: [stripeSecretKey],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Login required.");
+    }
+
+    const uid = request.auth.uid;
+    const packageKey = String(request.data?.packageKey ?? "");
+    const packageInfo = PRICE_MAP[packageKey];
+
+    if (!packageInfo) {
+      throw new HttpsError("invalid-argument", "Invalid package selected.");
+    }
+
+    try {
+      const stripe = new Stripe(stripeSecretKey.value());
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        line_items: [
+          {
+            price: packageInfo.priceId,
+            quantity: 1,
+          },
+        ],
+        success_url:
+          "https://magicalvibe-e3e86.web.app/?payment=success&session_id={CHECKOUT_SESSION_ID}",
+        cancel_url:
+          "https://magicalvibe-e3e86.web.app/?payment=cancel",
+        metadata: {
+          uid,
+          creditAmount: String(packageInfo.credits),
+          packageKey,
+        },
+      });
+
+      return {
+        url: session.url,
+      };
+    } catch (error) {
+      console.error("createCheckoutSession error:", error);
+      throw new HttpsError(
+        "internal",
+        error?.message || "Failed to create checkout session."
+      );
+    }
+  }
+);
+
+/* =========================
+   Stripe Webhook HTTP Endpoint
+========================= */
+exports.stripeWebhook = onRequest(
+  {
+    region: "us-central1",
+    timeoutSeconds: 120,
+    memory: "512MiB",
+    secrets: [stripeSecretKey, stripeWebhookSecret],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    const stripe = new Stripe(stripeSecretKey.value());
+    const signature = req.headers["stripe-signature"];
+
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.rawBody,
+        signature,
+        stripeWebhookSecret.value()
+      );
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err.message);
+      res.status(400).send(`Webhook Error: ${err.message}`);
+      return;
+    }
+
+    try {
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object;
+
+        const uid = session.metadata?.uid;
+        const creditAmount = Number(session.metadata?.creditAmount || 0);
+
+        if (!uid || !creditAmount) {
+          console.error("Missing uid or creditAmount in metadata.");
+          res.status(400).send("Missing metadata.");
+          return;
+        }
+
+        const eventRef = db.collection("stripeEvents").doc(event.id);
+        const userRef = db.collection("users").doc(uid);
+
+        await db.runTransaction(async (tx) => {
+          const eventDoc = await tx.get(eventRef);
+
+          if (eventDoc.exists) {
+            return;
+          }
+
+          const userDoc = await tx.get(userRef);
+
+          if (!userDoc.exists) {
+            throw new Error("User not found for Stripe credit grant.");
+          }
+
+          tx.set(eventRef, {
+            eventId: event.id,
+            type: event.type,
+            uid,
+            creditAmount,
+            checkoutSessionId: session.id || null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          tx.update(userRef, {
+            credits: admin.firestore.FieldValue.increment(creditAmount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        });
+
+        console.log("Credits granted:", {
+          uid,
+          creditAmount,
+          eventId: event.id,
+        });
+      }
+
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("stripeWebhook processing error:", error);
+      res.status(500).send("Internal Server Error");
     }
   }
 );
