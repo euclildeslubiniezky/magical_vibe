@@ -7,6 +7,10 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:math' as math;
+import 'terms_screen.dart';
+import 'privacy_screen.dart';
+import 'refund_screen.dart';
+import 'contact_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? initialAttribute;
@@ -623,7 +627,8 @@ Future<void> _purchaseCredits(String packageKey) async {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'クレジットを購入 Purchase Credits',
+                  'クレジットを購入 \nPurchase Credits',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Cinzel',
                     fontSize: 24,
@@ -1073,6 +1078,51 @@ Future<void> _purchaseCredits(String packageKey) async {
                           _selectedAttribute != null ? _generateMedia : null,
                     ),
                     const SizedBox(height: 50),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 14,
+                      runSpacing: 8,
+                      children: [
+                        _FooterLink(
+                          label: '利用規約 Terms of Use',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const TermsScreen()),
+                            );
+                          },
+                        ),
+                        _FooterLink(
+                          label: 'プライバシーポリシー Privacy Policy',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PrivacyScreen()),
+                            );
+                          },
+                        ),
+                        _FooterLink(
+                          label: '返金ポリシー Refund Policy',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RefundScreen()),
+                            );
+                          },
+                        ),
+                        _FooterLink(
+                          label: 'お問い合わせ Contact Us',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ContactScreen()),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -1100,6 +1150,31 @@ Future<void> _purchaseCredits(String packageKey) async {
 // ==============================
 // Small Info Chip
 // ==============================
+class _FooterLink extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _FooterLink({
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white60,
+          fontSize: 12,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    );
+  }
+}
+
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
