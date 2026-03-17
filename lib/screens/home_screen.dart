@@ -9,8 +9,7 @@ import 'dart:html' as html;
 import 'dart:math' as math;
 import 'terms_screen.dart';
 import 'privacy_screen.dart';
-import 'refund_screen.dart';
-import 'contact_screen.dart';
+import 'commerce_disclosure_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? initialAttribute;
@@ -1103,20 +1102,11 @@ Future<void> _purchaseCredits(String packageKey) async {
                           },
                         ),
                         _FooterLink(
-                          label: '返金ポリシー Refund Policy',
+                          label: '特定商取引法に基づく表記 Commerce Disclosure',
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const RefundScreen()),
-                            );
-                          },
-                        ),
-                        _FooterLink(
-                          label: 'お問い合わせ Contact Us',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ContactScreen()),
+                              MaterialPageRoute(builder: (_) => const CommerceDisclosureScreen()),
                             );
                           },
                         ),
