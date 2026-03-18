@@ -3,7 +3,6 @@ const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const Stripe = require("stripe");
-// redeploy for latest Stripe webhook secret
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -17,15 +16,15 @@ const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 ========================= */
 const PRICE_MAP = {
   "3": {
-    priceId: "price_1T94q7C2qeonX89sfddXPUIg",
+    priceId: "price_1T9nBZFxPCtopfZ8gVLO7RWB",
     credits: 3,
   },
   "10": {
-    priceId: "price_1T94rrC2qeonX89s9oIOi8By",
+    priceId: "price_1T9nBkFxPCtopfZ8gOhZfRnM",
     credits: 10,
   },
   "20": {
-    priceId: "price_1T94seC2qeonX89suopuvvxI",
+    priceId: "price_1T9nBWFxPCtopfZ89KMwpD7i",
     credits: 20,
   },
 };
@@ -89,8 +88,7 @@ const particlePrompts = {
 
 const dressPrompts = {
   Fire: "crimson and gold layered magical dress with rich volume",
-  Water:
-    "sapphire-colored fold composed of water where time stands still and voluminous rich dress",
+  Water: "sapphire-colored fold composed of water where time stands still and voluminous rich dress",
   Thunder: "violet and silver sharp-edged magical dress with rich volume",
   Ice: "icy blue crystal layered magical dress with rich volume",
   Wind: "emerald floral magical dress with flowing petals and rich volume",
@@ -273,8 +271,10 @@ exports.generateTransformationVideo = onCall(
         "https://fal.run/fal-ai/flux-pro/v1.1",
         {
           prompt: fluxPrompt,
-          negative_prompt:
-            "adult woman, rear view, back facing camera, turning around, wide stance, spread legs, kneeling, sitting, extra fingers, deformed hands, wings",
+          negative_prompt: `
+            adult woman, rear view, back facing camera, turning around, wide stance, spread legs, kneeling, 
+            sitting, extra fingers, deformed hands, wings,
+            `.trim(),
           width: 1280,
           height: 720,
         },
@@ -396,7 +396,14 @@ exports.createCheckoutSession = onCall(
     secrets: [stripeSecretKey],
   },
   async (request) => {
+    console.log("createCheckoutSession called:", {
+      hasAuth: !!request.auth,
+      uid: request.auth?.uid || null,
+      packageKey: request.data?.packageKey || null,
+    });
+
     if (!request.auth) {
+      console.error("createCheckoutSession unauthenticated request");
       throw new HttpsError("unauthenticated", "Login required.");
     }
 
@@ -405,11 +412,15 @@ exports.createCheckoutSession = onCall(
     const packageInfo = PRICE_MAP[packageKey];
 
     if (!packageInfo) {
+      console.error("Invalid packageKey:", packageKey);
       throw new HttpsError("invalid-argument", "Invalid package selected.");
     }
 
     try {
-      const stripe = new Stripe(stripeSecretKey.value());
+      const secret = stripeSecretKey.value();
+      console.log("Stripe secret present:", !!secret);
+
+      const stripe = new Stripe(secret);
 
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
@@ -430,11 +441,27 @@ exports.createCheckoutSession = onCall(
         },
       });
 
+      console.log("Checkout session created:", {
+        uid,
+        packageKey,
+        priceId: packageInfo.priceId,
+        sessionId: session.id,
+        hasUrl: !!session.url,
+      });
+
       return {
         url: session.url,
       };
     } catch (error) {
-      console.error("createCheckoutSession error:", error);
+      console.error("createCheckoutSession error full:", {
+        message: error?.message || null,
+        type: error?.type || null,
+        code: error?.code || null,
+        rawType: error?.rawType || null,
+        statusCode: error?.statusCode || null,
+        raw: error?.raw || null,
+      });
+
       throw new HttpsError(
         "internal",
         error?.message || "Failed to create checkout session."
@@ -476,12 +503,23 @@ exports.stripeWebhook = onRequest(
       return;
     }
 
+    console.log("stripeWebhook received:", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+
     try {
       if (event.type === "checkout.session.completed") {
         const session = event.data.object;
 
         const uid = session.metadata?.uid;
         const creditAmount = Number(session.metadata?.creditAmount || 0);
+
+        console.log("checkout.session.completed metadata:", {
+          uid,
+          creditAmount,
+          sessionId: session.id || null,
+        });
 
         if (!uid || !creditAmount) {
           console.error("Missing uid or creditAmount in metadata.");
@@ -496,6 +534,7 @@ exports.stripeWebhook = onRequest(
           const eventDoc = await tx.get(eventRef);
 
           if (eventDoc.exists) {
+            console.log("Stripe event already processed:", event.id);
             return;
           }
 
@@ -529,7 +568,10 @@ exports.stripeWebhook = onRequest(
 
       res.status(200).send("OK");
     } catch (error) {
-      console.error("stripeWebhook processing error:", error);
+      console.error("stripeWebhook processing error:", {
+        message: error?.message || null,
+        stack: error?.stack || null,
+      });
       res.status(500).send("Internal Server Error");
     }
   }
