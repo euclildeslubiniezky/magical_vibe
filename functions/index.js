@@ -220,7 +220,8 @@ exports.generateTransformationVideo = onCall(
       duration,
     });
 
-    let creditReserved = false;
+    let usedFreeTrial = false;   // フリートライアルを使ったか
+    let creditConsumed = false;   // 通常 credits を消費したか
 
     try {
       await db.runTransaction(async (tx) => {
@@ -230,28 +231,45 @@ exports.generateTransformationVideo = onCall(
           throw new HttpsError("not-found", "User not found.");
         }
 
-        const credits = userDoc.data().credits || 0;
+        const data = userDoc.data();
+        const freeTrialAvailable = data.freeTrialAvailable ?? false;
+        const freeTrialUsedAt    = data.freeTrialUsedAt ?? null;
 
-        if (credits <= 0) {
-          throw new HttpsError("failed-precondition", "No credits left.");
+        if (freeTrialAvailable === true && freeTrialUsedAt === null) {
+          // === 無料トライアル消費 ===
+          usedFreeTrial = true;
+          tx.update(userRef, {
+            freeTrialAvailable: false,
+            freeTrialUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          // === 通常 credits 消費 ===
+          const credits = data.credits || 0;
+          if (credits <= 0) {
+            throw new HttpsError("failed-precondition", "No credits left.");
+          }
+          creditConsumed = true;
+          tx.update(userRef, {
+            credits: admin.firestore.FieldValue.increment(-1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
         }
-
-        tx.update(userRef, {
-          credits: admin.firestore.FieldValue.increment(-1),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
 
         tx.set(generationLogRef, {
           uid,
           attribute,
           duration,
           status: "processing",
+          usedFreeTrial,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       });
 
-      creditReserved = true;
-      console.log("Credit decremented:", uid);
+      console.log(
+        usedFreeTrial ? "Free trial consumed:" : "Credit decremented:",
+        uid
+      );
 
       const apiKey = falApiKey.value();
 
@@ -364,7 +382,7 @@ exports.generateTransformationVideo = onCall(
         console.error("Failed to write generation log:", logError.message);
       }
 
-      if (creditReserved) {
+      if (creditConsumed) {
         try {
           await userRef.update({
             credits: admin.firestore.FieldValue.increment(1),

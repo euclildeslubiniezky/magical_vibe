@@ -404,18 +404,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final doc = await userRef.get();
 
     if (!doc.exists) {
+      // 新規ユーザー: 初回1回無料権を付与
       await userRef.set({
         'uid': user.uid,
         'email': user.email,
         'displayName': user.displayName,
-        'credits': 3,
+        'credits': 0,
+        'freeTrialAvailable': true,
+        'freeTrialGrantedAt': FieldValue.serverTimestamp(),
+        'freeTrialUsedAt': null,
         'createdAt': FieldValue.serverTimestamp(),
       });
     } else {
+      // 既存ユーザー: 遡及付与しない
       final data = doc.data();
       if (data == null || !data.containsKey('credits')) {
         await userRef.set({
-          'credits': 3,
+          'credits': 0,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }
@@ -869,32 +874,82 @@ Future<void> _purchaseCredits(String packageKey) async {
           builder: (context, userDocSnapshot) {
             final data = userDocSnapshot.data?.data();
             final credits = data?['credits'] ?? 0;
+            final freeTrialAvailable =
+                data?['freeTrialAvailable'] == true &&
+                data?['freeTrialUsedAt'] == null;
 
             return Wrap(
               alignment: WrapAlignment.center,
               spacing: 10,
               runSpacing: 10,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.15),
+                // 無料権バナー（新規ユーザーのみ表示）
+                if (freeTrialAvailable)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF4A148C),
+                          Color(0xFF880E4F),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.pinkAccent.withOpacity(0.6),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.purpleAccent.withOpacity(0.35),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.card_giftcard,
+                          color: Colors.pinkAccent,
+                          size: 16,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          "初回1回無料 First summon FREE!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.15),
+                      ),
+                    ),
+                    child: Text(
+                      "残りクレジット Remaining credits: $credits",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    "残りクレジット Remaining credits: $credits",
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
                 GestureDetector(
                   onTap: _showPurchaseDialog,
                   child: Container(
