@@ -97,7 +97,7 @@ const dressPrompts = {
 };
 
 const staffPrompts = {
-  Fire: "long flaming phoenix staff, ornate symmetrical weapon",
+  Fire: "long flaming phoenix sword, ornate symmetrical weapon",
   Water: "long crystal trident staff, transparent and symmetrical",
   Thunder: "long lightning spear staff, sharp and metallic",
   Ice: "long crystal ice staff, solid and symmetrical",
@@ -120,27 +120,32 @@ const wingPrompts = {
    Prompt Builders
 ========================= */
 function buildFluxPrompt(attribute, hair) {
+
   const headItem =
     attribute === "Dark"
-      ? "long horns of the devil on the head"
-      : "tiara with a veil";
-
-  const staff = staffPrompts[attribute];
+      ? "long dark devil horns"
+      : "elegant magical tiara with veil";
 
   return `
-cinematic full body shot of a young magical girl,
-${headItem},
-${hair},
+cinematic full body shot of a cute woman,
 front-facing,
 standing upright,
-legs together, feet together, stable elegant posture,
-holding ${staff} firmly in her one hand,
-the weapon is already present and clearly visible,
-photorealistic, masterpiece, 8k,
-${dressPrompts[attribute]},
+delicate facial features,
+
+simple unfinished fantasy dress,
+flowing fabric,
+not colorful,
+
+soft glowing fantasy lighting,
+
+${headItem},
+${hair},
+
 ${particlePrompts[attribute]},
 ${locationPrompts[attribute]},
-bright cinematic environment lighting
+
+masterpiece,
+8k
 `.trim();
 }
 
@@ -148,41 +153,76 @@ function buildKlingPrompt(attribute) {
   const wing = wingPrompts[attribute];
   const particle = particlePrompts[attribute];
   const staff = staffPrompts[attribute];
+  const dress = dressPrompts[attribute];
 
   return `
 Start:
-The footage begins with a super close-up of her eyes.
+The footage begins with a close-up of her face.
 
-She faces the drone camera throughout the entire sequence.
+She is already walking slowly when the video starts.
+
+She always faces the camera.
 She never turns around.
 
-The drone camera zooms out and pans to capture her full figure.
-${particle} must never be removed until the very end.
+The drone camera starts close to her face,
+then pulls backward,
+and rises upward,
+revealing her entire body.
+
+${particle} gently surrounds her during the transformation.
 
 From 0s to 4s:
 A controlled magical energy surge expands gently around her body.
-No chaotic explosion. No scene transition.
+
+Her simple unfinished fantasy dress gradually transforms into gorgeous ${dress}.
+
+The transformation is elegant,
+continuous,
+and visually stable.
+
+The final dress becomes fully completed,
+fully detailed,
+and visually rich by 4 seconds.
+
+No torn clothes.
+No broken fabric.
+No incomplete dress sections.
 
 At 1.5s:
-${staff} she holds begins to emit light energy.
-The staff must remain visible, long, stable, symmetrical,
-and firmly held in her right hand until the end. She never releases it.
-The staff's light energy must never fade until the very end.
+A single ${staff} materializes near her hand.
+
+Only one staff exists.
+
+She naturally grabs and holds the staff until the end.
+
+The staff emits stable magical light energy.
 
 At 2.5s:
-${wing} gently materialize from two attachment points on her upper back.
-Both wings must grow directly from her upper back.
-Never from the staff. Never from the hands. Never from floating objects.
-Both wings must stay attached to her body and aligned.
+${wing} gently materialize from her upper back.
 
-Camera movement must be smooth. No violent shaking.
+The wings remain attached to her back at all times.
+
+No wings from hands.
+No wings from the staff.
+No floating detached wings.
+
+At 4s:
+The magical energy around her hands fades away naturally.
+
+Her hands become fully visible and clear.
+
+At 4.5s:
+She gently looks toward the camera.
+
+A faint soft smile appears naturally.
+
+From 4.5s to 5s:
+She stops walking slowly.
+
+Hold a final heroic pose with subtle motion.
+
 Continuous stable 5-second sequence.
 
-From 4s to 5s:
-Hold final heroic pose with subtle motion. The staff remains in her hand.
-The wings remain attached to her back.
-
-Standing upright only. Legs together. Do not spread them.
 Perfect hands with five fingers visible.
 `.trim();
 }
@@ -233,7 +273,7 @@ exports.generateTransformationVideo = onCall(
 
         const data = userDoc.data();
         const freeTrialAvailable = data.freeTrialAvailable ?? false;
-        const freeTrialUsedAt    = data.freeTrialUsedAt ?? null;
+        const freeTrialUsedAt = data.freeTrialUsedAt ?? null;
 
         if (freeTrialAvailable === true && freeTrialUsedAt === null) {
           // === 無料トライアル消費 ===
@@ -274,10 +314,10 @@ exports.generateTransformationVideo = onCall(
       const apiKey = falApiKey.value();
 
       const hairOptions = [
-        "long blonde hair",
-        "long bright brown hair",
-        "long ponytail blonde hair",
-        "long ponytail bright brown hair",
+        "long flowing blonde hair",
+        "long flowing bright brown hair",
+        "long flowing ponytail blonde hair",
+        "long flowing ponytail bright brown hair",
       ];
 
       const randomHair = randomPick(hairOptions);
@@ -286,22 +326,24 @@ exports.generateTransformationVideo = onCall(
 
       console.log("Calling Flux...");
       const imageResponse = await axios.post(
-        "https://fal.run/fal-ai/flux-pro/v1.1",
+        "https://fal.run/fal-ai/flux-2-pro",
         {
           prompt: fluxPrompt,
           negative_prompt: `
-            adult woman, rear view, back facing camera, turning around, wide stance, spread legs, kneeling, 
-            sitting, extra fingers, deformed hands, wings,
+              adult woman, extra fingers, deformed hands
             `.trim(),
-          width: 1280,
-          height: 720,
+
+          image_size: {
+            width: 720,
+            height: 1280,
+          },
         },
         {
           headers: {
             Authorization: `Key ${apiKey}`,
             "Content-Type": "application/json",
           },
-          timeout: 60000,
+          timeout: 120000,
         }
       );
 
@@ -317,17 +359,18 @@ exports.generateTransformationVideo = onCall(
 
       console.log("Calling Kling...");
       const videoResponse = await axios.post(
-        "https://fal.run/fal-ai/kling-video/v1.5/pro/image-to-video",
+        "https://fal.run/fal-ai/kling-video/v2.6/pro/image-to-video",
         {
           image_url: imageUrl,
           prompt: klingPrompt,
           duration,
           mode: "high_quality",
+          aspect_ratio: "9:16",
+          generate_audio: false,
           negative_prompt: `
             broken staff, short staff, shrinking staff, thrown weapon, dropped weapon, detached wings,
             wings growing from the staff, wings growing from hands, wings growing from floating objects,
             rear view, back facing camera, turning around, scene transition, fade in, fade out,
-            while sitting, without standing up, kneeling, crouching, jittery camera, violent explosion
           `.trim(),
         },
         {
