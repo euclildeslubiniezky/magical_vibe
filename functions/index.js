@@ -120,110 +120,65 @@ const wingPrompts = {
    Prompt Builders
 ========================= */
 function buildFluxPrompt(attribute, hair) {
-
   const headItem =
     attribute === "Dark"
-      ? "long dark devil horns"
-      : "elegant magical tiara with veil";
+      ? "long horns of the devil on the head"
+      : "tiara with a veil";
+
+  const staff = staffPrompts[attribute];
 
   return `
-cinematic full body shot of a cute woman,
-front-facing,
-standing upright,
-delicate facial features,
-
-simple unfinished fantasy dress,
-flowing fabric,
-not colorful,
-
-soft glowing fantasy lighting,
-
+cinematic full body shot of a cute magical woman, front-facing,
+floating gently above the ground, long sheer dress (unfinished), not colorful, 
+masterpiece, 8k, soft glowing fantasy lighting, bright cinematic atmosphere,
 ${headItem},
 ${hair},
-
 ${particlePrompts[attribute]},
 ${locationPrompts[attribute]},
-
-masterpiece,
-8k
 `.trim();
 }
 
 function buildKlingPrompt(attribute) {
   const wing = wingPrompts[attribute];
   const particle = particlePrompts[attribute];
-  const staff = staffPrompts[attribute];
   const dress = dressPrompts[attribute];
+  const staff = staffPrompts[attribute];
 
   return `
 Start:
-The footage begins with a close-up of her face.
+The footage begins with a close-up of her face.The camera zooms out.
+She is already floating gently above the ground when the video starts.
 
-She is already walking slowly when the video starts.
-
-She always faces the camera.
-She never turns around.
-
-The drone camera starts close to her face,
-then pulls backward,
-and rises upward,
-revealing her entire body.
-
-${particle} gently surrounds her during the transformation.
+During the transformation,
+the camera performs a smooth cinematic 360-degree orbit around her body.
+After the orbit, the camera stabilizes in front of her.
+${particle} gently surround her during the entire sequence.
 
 From 0s to 4s:
 A controlled magical energy surge expands gently around her body.
+Her monochrome unfinished dress gradually transforms into gorgeous ${dress}.
+The dress transformation is smooth, continuous, elegant, and visually stable.
+The final dress becomes fully detailed, fully colored, and visually rich by 4 seconds.
+No torn clothes. No broken fabric. No incomplete dress sections.
+The transformation remains stable during the entire sequence.
 
-Her simple unfinished fantasy dress gradually transforms into gorgeous ${dress}.
-
-The transformation is elegant,
-continuous,
-and visually stable.
-
-The final dress becomes fully completed,
-fully detailed,
-and visually rich by 4 seconds.
-
-No torn clothes.
-No broken fabric.
-No incomplete dress sections.
-
-At 1.5s:
-A single ${staff} materializes near her hand.
-
-Only one staff exists.
-
-She naturally grabs and holds the staff until the end.
-
-The staff emits stable magical light energy.
-
-At 2.5s:
 ${wing} gently materialize from her upper back.
-
 The wings remain attached to her back at all times.
+No wings from hands. No wings from the staff. No floating detached wings.
 
-No wings from hands.
-No wings from the staff.
-No floating detached wings.
+A single ${staff} materializes near her hand. Only one staff exists. 
+She naturally grabs and holds the staff until the end.
+The staff emits stable magical light energy.
+The staff never floats away. The staff never leaves her hand. No duplicated weapons.
 
-At 4s:
-The magical energy around her hands fades away naturally.
-
-Her hands become fully visible and clear.
-
-At 4.5s:
-She gently looks toward the camera.
-
-A faint soft smile appears naturally.
-
-From 4.5s to 5s:
-She stops walking slowly.
-
+From 4s to 5s:
+The magical energy around her fades away naturally.
+Her become fully visible and clear.
+She slowly descends and lands gently on the ground.
+She softly looks toward the camera.
+A faint gentle smile gradually appears.
 Hold a final heroic pose with subtle motion.
-
-Continuous stable 5-second sequence.
-
-Perfect hands with five fingers visible.
+Continuous stable 5-second cinematic sequence.
 `.trim();
 }
 
@@ -314,10 +269,10 @@ exports.generateTransformationVideo = onCall(
       const apiKey = falApiKey.value();
 
       const hairOptions = [
-        "long flowing blonde hair",
-        "long flowing bright brown hair",
-        "long flowing ponytail blonde hair",
-        "long flowing ponytail bright brown hair",
+        "long blonde hair",
+        "long bright brown hair",
+        "long ponytail blonde hair",
+        "long ponytail bright brown hair",
       ];
 
       const randomHair = randomPick(hairOptions);
@@ -370,7 +325,7 @@ exports.generateTransformationVideo = onCall(
           negative_prompt: `
             broken staff, short staff, shrinking staff, thrown weapon, dropped weapon, detached wings,
             wings growing from the staff, wings growing from hands, wings growing from floating objects,
-            rear view, back facing camera, turning around, scene transition, fade in, fade out,
+            scene transition, fade in, fade out,
           `.trim(),
         },
         {
