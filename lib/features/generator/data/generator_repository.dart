@@ -8,15 +8,23 @@ class GeneratorRepository {
 
   Future<Map<String, dynamic>> generateVideo(String attribute) async {
     try {
-      final callable = _functions.httpsCallable('generateTransformationVideo');
-      final result = await callable.call({'attribute': attribute});
+      final callable =
+          _functions.httpsCallable('generateTransformationVideo');
+
+      final result = await callable.call({
+        'attribute': attribute,
+      });
+
       return Map<String, dynamic>.from(result.data);
-    } catch (e) {
-      throw Exception('Failed to generate video: $e');
-    }
+
+    } on FirebaseFunctionsException {
+      rethrow;
   }
 }
 
-final generatorRepositoryProvider = Provider<GeneratorRepository>((ref) {
-  return GeneratorRepository(FirebaseFunctions.instance);
+final generatorRepositoryProvider =
+    Provider<GeneratorRepository>((ref) {
+  return GeneratorRepository(
+    FirebaseFunctions.instance,
+  );
 });
