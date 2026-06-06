@@ -71,7 +71,7 @@ const locationPrompts = {
   Water: "in the shining sea",
   Thunder: "in the vertical lightning bolts with heavy rain on the cliff",
   Ice: "in the frozen crystal field",
-  Wind: "in the field of many glowing flowers",
+  Wind: "in the field of many glowing flower forest",
   Light: "in the heavenly sky",
   Dark: "inside the dark castlevania throne hall",
 };
@@ -130,7 +130,7 @@ function buildFluxPrompt(attribute, hair) {
   return `
 cinematic full body shot of a cute magical woman, front-facing,
 floating gently above the ground, long sheer dress (unfinished), not colorful, 
-masterpiece, 8k, soft glowing fantasy lighting, bright cinematic atmosphere,
+masterpiece, 8k, soft glowing fantasy lighting, bright cinematic atmosphere, not anime, 
 ${headItem},
 ${hair},
 ${particlePrompts[attribute]},
