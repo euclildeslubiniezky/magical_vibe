@@ -125,9 +125,9 @@ function buildFluxPrompt(attribute, hair) {
       ? "long horns of the devil on the head"
       : "tiara with a veil";
   return `
-cinematic full body shot of a cute magical woman, front-facing, not anime,
-floating gently above the ground, long sheer dress (unfinished), not colorful, 
-masterpiece, 8k, soft glowing fantasy lighting, bright cinematic atmosphere,
+cinematic full body shot of a cute magical woman, approximately 16 years old, front-facing, 
+not anime, floating gently above the ground, not colorful long sheer dress (unfinished), 
+masterpiece, 8k, soft glowing fantasy lighting, bright cinematic atmosphere, not anime, 
 ${headItem},
 ${hair},
 ${particlePrompts[attribute]},
