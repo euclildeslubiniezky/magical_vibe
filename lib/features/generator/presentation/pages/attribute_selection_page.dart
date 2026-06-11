@@ -36,13 +36,19 @@ class AttributeSelectionPage extends ConsumerWidget {
         },
         error: (error, stack) {
           if (error.toString().contains('Free limit reached')) {
-             showDialog(
+            showDialog(
               context: context,
               builder: (context) => const PaywallDialog(),
             );
           } else {
+            final message = error is Exception
+                ? error.toString().replaceFirst('Exception: ', '')
+                : error.toString();
+
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: $error')),
+              SnackBar(
+                content: Text(message),
+              ),
             );
           }
         },
