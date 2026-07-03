@@ -160,13 +160,13 @@ No torn clothes. No broken fabric. No incomplete dress sections.
 The transformation remains stable during the entire sequence.
 
 ${wing} gently materialize from her upper back.
-The wings remain attached to her back at all times.
-No wings from hands. No wings from the staff. No floating detached wings.
+The ${wing} remain attached to her back at all times.
+No ${wing} from hands. No ${wing} from the ${staff}. No floating detached ${wing}.
 
-A single ${staff} materializes near her hand. Only one staff exists. 
-She naturally grabs and holds the staff until the end.
-The staff emits stable magical light energy.
-The staff never floats away. The staff never leaves her hand. No duplicated weapons.
+A single ${staff} materializes near her hand. Only one ${staff} exists. 
+She naturally grabs and holds the ${staff} until the end.
+The ${staff} emits stable magical light energy.
+The ${staff} never floats away. The ${staff} never leaves her hand. No duplicated ${staff}.
 
 From 4s to 5s:
 The magical energy around her fades away naturally.
