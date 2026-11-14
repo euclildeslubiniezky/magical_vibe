@@ -135,7 +135,7 @@ ${locationPrompts[attribute]},
 `.trim();
 }
 
-function buildKlingPrompt(attribute) {
+function buildminimaxPrompt(attribute) {
   const wing = wingPrompts[attribute];
   const particle = particlePrompts[attribute];
   const dress = dressPrompts[attribute];
@@ -307,18 +307,18 @@ exports.generateTransformationVideo = onCall(
 
       console.log("Flux success:", imageUrl);
 
-      const klingPrompt = buildKlingPrompt(attribute);
+      const minimaxPrompt = buildMinimaxPrompt(attribute);
 
-      console.log("Calling Kling...");
+      console.log("Calling MiniMax H3 Turbo...");
       const videoResponse = await axios.post(
-        "https://fal.run/fal-ai/kling-video/v2.6/pro/image-to-video",
+        "https://fal.run/minimax/h3-max-turbo/image-to-video",
         {
           image_url: imageUrl,
-          prompt: klingPrompt,
+          prompt: minimaxPrompt,
           duration,
-          mode: "high_quality",
-          aspect_ratio: "9:16",
-          generate_audio: false,
+          resolution: "768P",
+          prompt_expansion_mode: "disabled",
+          enable_safety_checker: true,
           negative_prompt: `
             broken staff, short staff, shrinking staff, thrown weapon, dropped weapon, detached wings,
             wings growing from the staff, wings growing from hands, wings growing from floating objects,
@@ -337,10 +337,10 @@ exports.generateTransformationVideo = onCall(
       const videoUrl = videoResponse?.data?.video?.url;
 
       if (!videoUrl) {
-        throw new Error("Kling video URL was not returned.");
+        throw new Error("MiniMax video URL was not returned.");
       }
 
-      console.log("Kling success:", videoUrl);
+      console.log("MiniMax success:", videoUrl);
 
       await generationLogRef.update({
         status: "completed",
