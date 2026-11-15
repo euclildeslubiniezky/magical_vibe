@@ -3,6 +3,7 @@ const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const Stripe = require("stripe");
+const nosoundAudioUrl = defineSecret("NOSOUND_AUDIO_URL");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -135,7 +136,7 @@ ${locationPrompts[attribute]},
 `.trim();
 }
 
-function buildminimaxPrompt(attribute) {
+function buildMinimaxPrompt(attribute) {
   const wing = wingPrompts[attribute];
   const particle = particlePrompts[attribute];
   const dress = dressPrompts[attribute];
@@ -186,7 +187,7 @@ exports.generateTransformationVideo = onCall(
   {
     timeoutSeconds: 540,
     memory: "1GiB",
-    secrets: [falApiKey],
+    secrets: [falApiKey, nosoundAudioUrl],
     region: "us-central1",
   },
   async (request) => {
@@ -317,13 +318,9 @@ exports.generateTransformationVideo = onCall(
           prompt: minimaxPrompt,
           duration,
           resolution: "768P",
-          prompt_expansion_mode: "disabled",
+          prompt_expansion_mode: "quality",
           enable_safety_checker: true,
-          negative_prompt: `
-            broken staff, short staff, shrinking staff, thrown weapon, dropped weapon, detached wings,
-            wings growing from the staff, wings growing from hands, wings growing from floating objects,
-            scene transition, fade in, fade out,
-          `.trim(),
+          target_audio_url: nosoundAudioUrl.value(),
         },
         {
           headers: {
