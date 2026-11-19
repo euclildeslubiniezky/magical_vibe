@@ -177,6 +177,13 @@ She softly looks toward the camera.
 A faint gentle smile gradually appears.
 Hold a final heroic pose with subtle motion.
 Continuous stable 5-second cinematic sequence.
+
+The fully formed wings remain clearly visible,
+complete, and attached to her back throughout
+the entire final scene.
+
+Do not remove, fade out, hide, or dissolve the wings.
+Preserve their shape and structure until the final frame.
 `.trim();
 }
 
@@ -279,17 +286,14 @@ exports.generateTransformationVideo = onCall(
 
       console.log("Calling Flux...");
       const imageResponse = await axios.post(
-        "https://fal.run/fal-ai/flux-2-pro",
+        "https://fal.run/microsoft/mai-image-2.7/flash/text-to-image",
         {
           prompt: fluxPrompt,
-          negative_prompt: `
-              adult woman, extra fingers, deformed hands
-            `.trim(),
-
-          image_size: {
-            width: 720,
-            height: 1280,
-          },
+          // negative_prompt: `
+          //       adult woman, extra fingers, deformed hands
+          //   `.trim(),
+          image_size: "portrait_16_9",
+          resolution: "1K",
         },
         {
           headers: {
@@ -317,7 +321,7 @@ exports.generateTransformationVideo = onCall(
           image_url: imageUrl,
           prompt: minimaxPrompt,
           duration,
-          resolution: "768P",
+          resolution: "1080P",
           prompt_expansion_mode: "quality",
           enable_safety_checker: true,
           target_audio_url: nosoundAudioUrl.value(),
